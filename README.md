@@ -22,7 +22,7 @@ All pages work inside an iframe; the documentation embeds the demo itself (secti
 parent window (`{type: "cellscape-height", height}`).
 
 ```html
-<iframe src="https://blenderprocedural.github.io/cellscape/" width="100%" height="9000" style="border:0" loading="lazy"></iframe>
+<iframe src="https://blenderprocedural.github.io/cellscape/" width="100%" height="10000" style="border:0" loading="lazy"></iframe>
 <iframe src="https://blenderprocedural.github.io/cellscape/docs.html" width="100%" height="10500" style="border:0" loading="lazy"></iframe>
 <iframe src="https://blenderprocedural.github.io/cellscape/demo.html" width="100%" height="680" style="border:0" allow="fullscreen"></iframe>
 ```

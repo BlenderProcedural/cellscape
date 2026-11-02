@@ -38,13 +38,25 @@
 .tile.px img { image-rendering: pixelated; }
 .tile span { position: absolute; left: 8px; bottom: 8px; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
   background: rgba(12,14,19,.75); color: #eef0f3; }
-.styles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
-.style { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); aspect-ratio: 4 / 5; background: #1a1d24; }
-.style img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s; }
-.style:hover img { transform: scale(1.05); }
-.style div { position: absolute; left: 0; right: 0; bottom: 0; padding: 30px 12px 11px; background: linear-gradient(transparent, rgba(8,10,14,.92)); }
-.style b { display: block; font-size: 15px; }
-.style small { font-size: 12.5px; color: #b8bdc7; line-height: 1.35; display: block; }
+.gal { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0,0,0,.45); background: #000; }
+.gal-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; }
+.gal-track::-webkit-scrollbar { display: none; }
+.gal figure { flex: 0 0 100%; margin: 0; position: relative; scroll-snap-align: start; aspect-ratio: 2 / 1; }
+.gal figure img { width: 100%; height: 100%; object-fit: cover; }
+.gal figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 60px 26px 20px; background: linear-gradient(transparent, rgba(8,10,14,.82)); }
+.gal figcaption b { display: block; font-size: clamp(20px, 2.6vw, 30px); font-weight: 800; letter-spacing: -.02em; }
+.gal figcaption span { color: #c9ccd3; font-size: 15px; }
+.gal-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; border-radius: 50%; border: 1px solid rgba(255,255,255,.18);
+  background: rgba(12,14,19,.6); color: #fff; font-size: 30px; line-height: 1; cursor: pointer; backdrop-filter: blur(6px); display: grid; place-items: center; padding-bottom: 4px; }
+.gal-btn:hover { background: rgba(255,181,71,.85); color: #1c1407; }
+.gal-btn.prev { left: 14px; } .gal-btn.next { right: 14px; }
+.gal-tabs { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; margin-top: 12px; }
+.gal-tabs button { padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--card); color: var(--muted); cursor: pointer;
+  font: 600 12px/1.2 inherit; font-family: inherit; text-align: center; transition: border-color .15s, color .15s; }
+.gal-tabs img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; opacity: .6; transition: opacity .15s; }
+.gal-tabs span { display: block; padding: 6px 4px 7px; }
+.gal-tabs button:hover img, .gal-tabs button.on img { opacity: 1; }
+.gal-tabs button.on { border-color: rgba(255,181,71,.6); color: #fff; }
 .big { margin-top: 26px; }
 .pair { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; margin-top: 16px; }
 .pair > * { min-width: 0; }
@@ -60,7 +72,9 @@
   .demo-host { height: 600px; }
   .demo-notes, .feat, .spec { grid-template-columns: 1fr; }
   .tiles { grid-template-columns: repeat(2, 1fr); }
-  .styles { grid-template-columns: repeat(2, 1fr); }
+  .gal-tabs { grid-template-columns: repeat(5, 1fr); }
+  .gal-btn { width: 38px; height: 38px; font-size: 24px; }
+  .gal figcaption { padding: 40px 16px 12px; } .gal figcaption span { display: none; }
   .pair { grid-template-columns: 1fr; }
 }
 </style>
@@ -232,17 +246,33 @@
     <div class="kicker teal">Ten styles</div>
     <h2>One generator, <span class="grad-teal">ten cities.</span></h2>
     <p class="lead">Each style has its own modules, materials, trees and street plan: the Japanese town stays low, Cyberpunk and Brutalist build high, the Tree City is full of gardens, the Desert has large bazaar squares.</p>
-    <div class="styles big">
-      <div class="style"><img src="images/styles/classical.jpg" alt="" loading="lazy"><div><b>Classical</b><small>Stone, copper domes, terraces</small></div></div>
-      <div class="style"><img src="images/styles/mediterranean.jpg" alt="" loading="lazy"><div><b>Mediterranean</b><small>Pastel houses, canals, quays</small></div></div>
-      <div class="style"><img src="images/styles/japanese.jpg" alt="" loading="lazy"><div><b>Japanese Old Town</b><small>Timber, curved roofs, pagodas</small></div></div>
-      <div class="style"><img src="images/styles/gothic.jpg" alt="" loading="lazy"><div><b>Dark Gothic</b><small>Pointed arches, spires</small></div></div>
-      <div class="style"><img src="images/styles/desert.jpg" alt="" loading="lazy"><div><b>Desert Palace</b><small>Onion domes, bazaars, palms</small></div></div>
-      <div class="style"><img src="images/styles/cyberpunk.jpg" alt="" loading="lazy"><div><b>Cyberpunk</b><small>Neon megacity at night</small></div></div>
-      <div class="style"><img src="images/styles/steampunk.jpg" alt="" loading="lazy"><div><b>Steampunk</b><small>Brick, copper pipes, clocks</small></div></div>
-      <div class="style"><img src="images/styles/space.jpg" alt="" loading="lazy"><div><b>Space Colony</b><small>Habitats, tubes, landing pads</small></div></div>
-      <div class="style"><img src="images/styles/tree.jpg" alt="" loading="lazy"><div><b>Fantasy Tree City</b><small>Giant trunks, rope bridges</small></div></div>
-      <div class="style"><img src="images/styles/brutalist.jpg" alt="" loading="lazy"><div><b>Brutalist</b><small>Concrete megastructures</small></div></div>
+    <div class="gal big" id="gal">
+      <div class="gal-track">
+      <figure><img src="images/cities/classical.jpg" alt="Classical City generated by Cellscape: stone, copper domes and balustraded roof terraces at golden hour" loading="eager"><figcaption><b>Classical City</b><span>Stone, copper domes and balustraded roof terraces at golden hour</span></figcaption></figure>
+      <figure><img src="images/cities/mediterranean.jpg" alt="Mediterranean Canal City generated by Cellscape: pastel houses, canals with quays and bridges" loading="lazy"><figcaption><b>Mediterranean Canal City</b><span>Pastel houses, canals with quays and bridges</span></figcaption></figure>
+      <figure><img src="images/cities/japanese.jpg" alt="Japanese Old Town generated by Cellscape: timber frames, curved tiled roofs, pagodas, cherry trees" loading="lazy"><figcaption><b>Japanese Old Town</b><span>Timber frames, curved tiled roofs, pagodas, cherry trees</span></figcaption></figure>
+      <figure><img src="images/cities/gothic.jpg" alt="Dark Gothic City generated by Cellscape: pointed arches, buttresses, spires and lit windows at dusk" loading="lazy"><figcaption><b>Dark Gothic City</b><span>Pointed arches, buttresses, spires and lit windows at dusk</span></figcaption></figure>
+      <figure><img src="images/cities/desert.jpg" alt="Desert Palace and Bazaar generated by Cellscape: horseshoe arches, onion domes, market stalls, palms" loading="lazy"><figcaption><b>Desert Palace &amp; Bazaar</b><span>Horseshoe arches, onion domes, market stalls, palms</span></figcaption></figure>
+      <figure><img src="images/cities/cyberpunk.jpg" alt="Cyberpunk Megacity generated by Cellscape: neon towers in the night haze" loading="lazy"><figcaption><b>Cyberpunk Megacity</b><span>Neon towers in the night haze</span></figcaption></figure>
+      <figure><img src="images/cities/steampunk.jpg" alt="Steampunk Industrial City generated by Cellscape: brick factories, copper pipes, clock towers" loading="lazy"><figcaption><b>Steampunk Industrial City</b><span>Brick factories, copper pipes, clock towers</span></figcaption></figure>
+      <figure><img src="images/cities/space.jpg" alt="Space Colony generated by Cellscape: habitats, glass tubes and landing pads" loading="lazy"><figcaption><b>Space Colony</b><span>Habitats, glass tubes and landing pads</span></figcaption></figure>
+      <figure><img src="images/cities/tree.jpg" alt="Fantasy Tree City generated by Cellscape: houses around giant trunks, rope bridges" loading="lazy"><figcaption><b>Fantasy Tree City</b><span>Houses around giant trunks, rope bridges</span></figcaption></figure>
+      <figure><img src="images/cities/brutalist.jpg" alt="Brutalist Dystopia generated by Cellscape: board-marked concrete megastructures" loading="lazy"><figcaption><b>Brutalist Dystopia</b><span>Board-marked concrete megastructures</span></figcaption></figure>
+      </div>
+      <button type="button" class="gal-btn prev" aria-label="Previous style">&#8249;</button>
+      <button type="button" class="gal-btn next" aria-label="Next style">&#8250;</button>
+    </div>
+    <div class="gal-tabs" id="gal-tabs">
+      <button type="button" data-i="0" class="on"><img src="images/styles/classical.jpg" alt="" loading="lazy"><span>Classical</span></button>
+      <button type="button" data-i="1"><img src="images/styles/mediterranean.jpg" alt="" loading="lazy"><span>Mediterranean</span></button>
+      <button type="button" data-i="2"><img src="images/styles/japanese.jpg" alt="" loading="lazy"><span>Japanese</span></button>
+      <button type="button" data-i="3"><img src="images/styles/gothic.jpg" alt="" loading="lazy"><span>Dark Gothic</span></button>
+      <button type="button" data-i="4"><img src="images/styles/desert.jpg" alt="" loading="lazy"><span>Desert Palace</span></button>
+      <button type="button" data-i="5"><img src="images/styles/cyberpunk.jpg" alt="" loading="lazy"><span>Cyberpunk</span></button>
+      <button type="button" data-i="6"><img src="images/styles/steampunk.jpg" alt="" loading="lazy"><span>Steampunk</span></button>
+      <button type="button" data-i="7"><img src="images/styles/space.jpg" alt="" loading="lazy"><span>Space Colony</span></button>
+      <button type="button" data-i="8"><img src="images/styles/tree.jpg" alt="" loading="lazy"><span>Fantasy Tree</span></button>
+      <button type="button" data-i="9"><img src="images/styles/brutalist.jpg" alt="" loading="lazy"><span>Brutalist</span></button>
     </div>
     <p class="muted" style="margin-top:16px; font-size:15px">Plus six more tilesets: Voxel City, Kenney City (CC0), Modern City, Dungeon, Space Station – and your own collection.</p>
   </div>
@@ -327,6 +357,26 @@
   <div class="wrap">Cellscape for Blender · <a href="docs.html">Documentation</a> · <a href="demo.html">Full-screen demo</a></div>
 </footer>
 
+<script>
+(function () {
+  var gal = document.getElementById("gal"), track = gal.querySelector(".gal-track"), tabs = document.querySelectorAll("#gal-tabs button");
+  var n = tabs.length, cur = 0, auto = true;
+  function go(i) { cur = (i + n) % n; track.scrollTo({ left: cur * track.clientWidth }); }
+  function stop() { auto = false; }
+  gal.querySelector(".prev").addEventListener("click", function () { stop(); go(cur - 1); });
+  gal.querySelector(".next").addEventListener("click", function () { stop(); go(cur + 1); });
+  tabs.forEach(function (b) { b.addEventListener("click", function () { stop(); go(+b.dataset.i); }); });
+  track.addEventListener("scroll", function () {
+    var i = Math.round(track.scrollLeft / track.clientWidth);
+    if (i !== cur) cur = i;
+    tabs.forEach(function (b, k) { b.classList.toggle("on", k === cur); });
+  }, { passive: true });
+  ["pointerdown", "wheel", "touchstart"].forEach(function (e) { track.addEventListener(e, stop, { passive: true }); });
+  var seen = false;
+  if ("IntersectionObserver" in window) new IntersectionObserver(function (es) { seen = es[0].isIntersecting; }, { threshold: 0.4 }).observe(gal);
+  setInterval(function () { if (auto && seen && !document.hidden) go(cur + 1); }, 4500);
+})();
+</script>
 <script src="assets/embed.js"></script>
 <script type="module">
 import { mountDemo } from './demo/viewer.js';
