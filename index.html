@@ -101,7 +101,7 @@
       <span class="chip">Blender 4.2 – 5.2</span>
     </div>
     <div class="media"><img width="2000" height="1000" src="images/letters_real.jpg" alt="The word CELLSCAPE spelled with buildings in the middle of a generated classical city at golden hour" fetchpriority="high"></div>
-    <div class="cta-row">
+    <div class="cta-row web-only"><!-- in-page jumps would scroll a store's fixed iframe out of reach -->
       <a class="btn" href="#demo">▶ Try the live demo</a>
       <a class="btn ghost" href="#tutorial">▶ Watch the tutorial</a>
       <a class="btn ghost web-only" href="docs.html">Read the documentation</a>
@@ -116,6 +116,16 @@
     </div>
   </div>
 </header>
+
+<section id="new">
+  <div class="wrap">
+    <div class="kicker teal">New in 1.11 · Build by Clicking</div>
+    <h2>Build a city <span class="grad-teal">by clicking.</span></h2>
+    <p class="lead">Click to raise buildings and storeys, drag for whole rows, Ctrl for gardens, Alt for canals – Wave Function Collapse solves the city again around every click, in all ten styles.</p>
+    <div class="media yt"><iframe src="https://www.youtube-nocookie.com/embed/HX97qTl65Ik?rel=0" title="Cellscape – Build by Clicking" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+    <p class="muted" style="margin-top:12px"><a href="https://www.youtube.com/watch?v=HX97qTl65Ik">Watch on YouTube ↗</a></p>
+  </div>
+</section>
 
 <section id="tutorial">
   <div class="wrap">
@@ -299,7 +309,6 @@
     <div class="kicker teal">New in 1.11 · Build by Clicking</div>
     <h2>Click a city <span class="grad-teal">into shape.</span></h2>
     <p class="lead">Start an empty city, or open one you generated, and build it with the mouse. A click raises a building or adds a storey, a drag lays a whole row, Ctrl paints gardens, Alt digs canals, right-click takes storeys away. After every click Wave Function Collapse solves the cells around it again, so walls, windows, doors, roofs, terraces, stairs and streets adjust themselves – in a few milliseconds.</p>
-    <div class="media big"><video src="media/build_by_clicking.mp4" poster="images/paint_poster.jpg" controls playsinline preload="none"></video></div>
     <div class="tiles paint">
       <div class="tile"><img width="432" height="267" src="media/paint/classical.gif" alt="A Classical City built by clicking" loading="lazy"><span>Classical</span></div>
       <div class="tile"><img width="432" height="267" src="media/paint/mediterranean.gif" alt="A Mediterranean Canal City built by clicking, with a canal" loading="lazy"><span>Mediterranean</span></div>
@@ -392,7 +401,7 @@
   <div class="wrap">
     <h2>Start growing <span class="grad">your city.</span></h2>
     <p class="lead" style="margin:0 auto 24px">Install, press <kbd>N</kbd>, pick a style and press Generate.</p>
-    <div class="cta-row" style="justify-content:center">
+    <div class="cta-row web-only" style="justify-content:center">
       <a class="btn" href="#demo">▶ Play the demo again</a>
       <a class="btn ghost web-only" href="docs.html">Documentation</a>
     </div>
