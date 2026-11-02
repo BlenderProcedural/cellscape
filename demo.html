@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cellscape – MarkovJunior 3D Demo</title>
+<meta name="description" content="Run MarkovJunior in your browser: watch Cellscape's procedural buildings grow rule by rule. Same seed, same building as the Blender add-on.">
+<meta property="og:image" content="images/build.jpg">
+<link rel="icon" href="images/logo.svg">
+<link rel="stylesheet" href="assets/style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<style>
+html, body { height: 100%; }
+body { display: flex; flex-direction: column; padding: 12px; gap: 10px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.top .brand h1 { font-size: 22px; letter-spacing: -.02em; }
+.top .logo { width: 32px; height: 32px; }
+.top p { margin: 0; font-size: 14px; color: var(--muted); }
+#demo-root { flex: 1; min-height: 480px; }
+html.framed body { padding: 0; }
+html.framed .top { display: none; }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand"><img class="logo" src="images/logo.svg" alt=""><h1>Cellscape · MarkovJunior demo</h1></div>
+  <p>Drag to orbit · scroll to zoom · <kbd>Space</kbd> play/pause · <kbd>N</kbd> new seed · <a href="index.html">About Cellscape</a></p>
+</div>
+<div id="demo-root"></div>
+<script src="assets/embed.js"></script>
+<script type="module">
+import { mountDemo } from './demo/viewer.js';
+const q = new URLSearchParams(location.search);
+mountDemo(document.getElementById('demo-root'), { model: q.get('model') || 'Pagoda', seed: q.has('seed') ? +q.get('seed') : undefined });
+</script>
+</body>
+</html>

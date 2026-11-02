@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cellscape – Procedural Buildings & Walkable WFC Cities for Blender</title>
+<meta name="description" content="Grow castles, temples and whole walkable cities in Blender with MarkovJunior rules and Wave Function Collapse. 187 procedural models, 16 WFC tilesets, 10 city styles, infinite cities and a one-click build animation.">
+<meta property="og:title" content="Cellscape – Procedural Buildings & Walkable WFC Cities for Blender">
+<meta property="og:description" content="187 MarkovJunior models and an infinite Wave Function Collapse city generator with 10 architectural styles. Try the live MarkovJunior demo in your browser.">
+<meta property="og:image" content="images/letters_real.jpg">
+<link rel="icon" href="images/logo.svg">
+<link rel="stylesheet" href="assets/style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<style>
+.hero { padding: 46px 0 52px; background: radial-gradient(ellipse 80% 70% at 50% 0%, #2a2216 0%, var(--bg) 70%); }
+.hero .brand { margin-bottom: 22px; }
+.tagline { font-size: clamp(32px, 5vw, 58px); font-weight: 800; letter-spacing: -.035em; line-height: 1.04; margin: 0 0 18px; }
+.chips { display: flex; flex-wrap: wrap; gap: 9px; margin: 22px 0 28px; }
+.chip { padding: 7px 15px; border-radius: 999px; background: rgba(255,181,71,.09); border: 1px solid rgba(255,181,71,.35); color: #fbe6c4; font-weight: 600; font-size: 14.5px; }
+.chip.t { background: rgba(95,211,198,.08); border-color: rgba(95,211,198,.35); color: #cdf3ed; }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-top: 34px; }
+.stats div { background: var(--card); padding: 18px 10px; text-align: center; }
+.stats b { display: block; font-size: 28px; font-weight: 800; letter-spacing: -.02em; color: var(--accent2); line-height: 1.1; }
+.stats span { font-size: 13.5px; color: var(--muted); }
+.demo-host { height: 680px; margin-top: 26px; }
+.demo-notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+.demo-notes div { font-size: 14.5px; color: #aab0bc; padding-left: 14px; border-left: 2px solid rgba(255,181,71,.45); }
+.demo-notes b { color: var(--text); }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.tile { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #1a1d24; aspect-ratio: 1; }
+.tile img { width: 100%; height: 100%; object-fit: cover; image-rendering: auto; }
+.tile.px img { image-rendering: pixelated; }
+.tile span { position: absolute; left: 8px; bottom: 8px; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  background: rgba(12,14,19,.75); color: #eef0f3; }
+.styles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.style { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); aspect-ratio: 4 / 5; background: #1a1d24; }
+.style img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s; }
+.style:hover img { transform: scale(1.05); }
+.style div { position: absolute; left: 0; right: 0; bottom: 0; padding: 30px 12px 11px; background: linear-gradient(transparent, rgba(8,10,14,.92)); }
+.style b { display: block; font-size: 15px; }
+.style small { font-size: 12.5px; color: #b8bdc7; line-height: 1.35; display: block; }
+.big { margin-top: 26px; }
+.pair { display: grid; grid-template-columns: 1.15fr 1fr; gap: 16px; margin-top: 16px; }
+.pair > * { min-width: 0; }
+.feat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px; }
+.spec { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 34px; }
+.spec dl { margin: 0; }
+.spec dt { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-top: 16px; }
+.spec dd { margin: 3px 0 0; color: var(--soft); }
+.credits p { font-size: 15px; }
+.final { text-align: center; background: radial-gradient(ellipse 70% 90% at 50% 100%, #2a2216 0%, var(--bg) 70%); }
+@media (max-width: 860px) {
+  .stats { grid-template-columns: repeat(3, 1fr); }
+  .demo-host { height: 600px; }
+  .demo-notes, .feat, .spec { grid-template-columns: 1fr; }
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .styles { grid-template-columns: repeat(2, 1fr); }
+  .pair { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brand"><img class="logo" src="images/logo.svg" alt=""><h1>Cellscape</h1></div>
+    <p class="tagline">Grow buildings.<br><span class="grad">Collapse whole cities.</span></p>
+    <p class="lead">Cellscape brings two of the most loved procedural techniques into Blender: <b>MarkovJunior</b>, which grows castles, temples and towers by rewriting a grid rule after rule, and <b>Wave Function Collapse</b>, which fills a street plan with terraced, walkable cities that can be extended forever.</p>
+    <div class="chips">
+      <span class="chip">187 MarkovJunior models</span>
+      <span class="chip">52 in 3D</span>
+      <span class="chip">Build animation</span>
+      <span class="chip t">16 WFC tilesets</span>
+      <span class="chip t">10 city styles</span>
+      <span class="chip t">Infinite cities</span>
+      <span class="chip">Blender 4.2 – 5.2</span>
+    </div>
+    <div class="media"><img src="images/letters_real.jpg" alt="The word CELLSCAPE spelled with buildings in the middle of a generated classical city at golden hour" fetchpriority="high"></div>
+    <div class="cta-row">
+      <a class="btn" href="#demo">▶ Try the live demo</a>
+      <a class="btn ghost" href="docs.html">Read the documentation</a>
+    </div>
+    <div class="stats">
+      <div><b>187</b><span>procedural models</span></div>
+      <div><b>16</b><span>original models</span></div>
+      <div><b>16</b><span>WFC tilesets</span></div>
+      <div><b>10</b><span>city styles</span></div>
+      <div><b>∞</b><span>extendable cities</span></div>
+      <div><b>0</b><span>dependencies</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="demo">
+  <div class="wrap">
+    <div class="kicker">Live demo · runs in your browser</div>
+    <h2>Watch a building <span class="grad">write itself.</span></h2>
+    <p class="lead">This is Cellscape's own MarkovJunior interpreter, running right here. Pick a model, press <b>New seed</b> and watch the rules rewrite the grid, step by step, into a pagoda, a castle or a whole town. Drag to orbit, scroll to zoom.</p>
+    <div class="demo-host" id="demo-root"></div>
+    <div class="demo-notes">
+      <div><b>Same seed, same building.</b> The demo uses the same interpreter and random generator as the add-on: type a seed here and Blender builds the identical model.</div>
+      <div><b>20 of 187 models.</b> All 16 original Cellscape buildings plus four classics. The add-on runs every model, in 2D and 3D, with materials and live preview.</div>
+      <div><b>The rule at work</b> is shown at the bottom left: <code>B W → V W</code> means "wherever a B sits next to a W, turn it into a V".</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Two generators, one add-on</div>
+    <h2>From a single tower <span class="grad">to an endless city.</span></h2>
+    <div class="grid2 big">
+      <div class="card">
+        <div class="media" style="margin:-22px -22px 18px; border-radius:16px 16px 0 0; border:0; box-shadow:none"><img src="images/markovjunior_3d.jpg" alt="Eight 3D MarkovJunior voxel models: castle, pagoda, mosque, temple, lighthouse, village, windmills, floating island" loading="lazy"></div>
+        <div class="kicker">Models</div>
+        <h3>MarkovJunior</h3>
+        <p>Small rule programs that grow a structure from a seed: castles with moats, multi-tier pagodas, mosques with minarets, lighthouses, skyscrapers, favelas, ruins – plus every maze, dungeon, cave and river of the original MarkovJunior collection. Built as clean, optimised meshes with ready-made materials.</p>
+      </div>
+      <div class="card">
+        <div class="media" style="margin:-22px -22px 18px; border-radius:16px 16px 0 0; border:0; box-shadow:none"><img src="images/golden.jpg" alt="A terraced classical city with domes, balustraded roof terraces and stairs at golden hour" loading="lazy"></div>
+        <div class="kicker teal">WFC City</div>
+        <h3>Wave Function Collapse</h3>
+        <p>A street plan with lanes, avenues, squares and courtyards, solved block by block with modules that fit on every side: stairs climb onto roof terraces, bridges cross the lanes, arcades run under the houses. Extend it in any direction, or let it grow around your view.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="split">
+      <div class="txt">
+        <div class="kicker">MarkovJunior in 3D</div>
+        <h2>52 voxel models, <span class="grad">16 of them new.</span></h2>
+        <p>Every 3D model of the original MarkovJunior repository runs inside Blender, together with sixteen architectural models written for Cellscape: Castle, Village, Pyramid, City Block, Downtown, Lighthouse, Skyscraper, Favela, Floating Island, Pagoda, Temple, Ruins, Mosque, Refinery, Woodland and Windmills.</p>
+        <ul class="ticks">
+          <li>Gallery with a preview of every model, categories and search</li>
+          <li><b>Live preview</b>: the model grows in the viewport while Blender stays responsive; <kbd>Esc</kbd> stops it</li>
+          <li><b>Variations</b>: a row of seeds side by side, ready for an asset library</li>
+          <li>Greedy meshing and merged vertices: up to 90 % fewer polygons</li>
+          <li>Export to MagicaVoxel <code>.vox</code></li>
+        </ul>
+      </div>
+      <div class="tiles">
+        <div class="tile"><img src="media/3d/Castle.gif" alt="Castle model growing" loading="lazy"><span>Castle</span></div>
+        <div class="tile"><img src="media/3d/Pagoda.gif" alt="Pagoda model growing" loading="lazy"><span>Pagoda</span></div>
+        <div class="tile"><img src="media/3d/Mosque.gif" alt="Mosque model growing" loading="lazy"><span>Mosque</span></div>
+        <div class="tile"><img src="media/3d/Temple.gif" alt="Temple model growing" loading="lazy"><span>Temple</span></div>
+        <div class="tile"><img src="media/3d/Lighthouse.gif" alt="Lighthouse model growing" loading="lazy"><span>Lighthouse</span></div>
+        <div class="tile"><img src="media/3d/Village.gif" alt="Village model growing" loading="lazy"><span>Village</span></div>
+        <div class="tile"><img src="media/3d/Windmills.gif" alt="Windmills model growing" loading="lazy"><span>Windmills</span></div>
+        <div class="tile"><img src="media/3d/Downtown.gif" alt="Downtown model growing" loading="lazy"><span>Downtown</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="split rev">
+      <div class="txt">
+        <div class="kicker">Build Animation</div>
+        <h2>One click, <span class="grad">and it builds itself.</span></h2>
+        <p>Select a generated model and press <b>Build Animation</b>. Cellscape replays the run and records the step at which every voxel got its final colour: voxels drop in from above, glow as they land and settle – in the order the rules placed them.</p>
+        <ul class="ticks">
+          <li>A live Geometry Nodes setup, not baked keyframes</li>
+          <li>Change length, fade, drop height, glow and voxel gap at any time</li>
+          <li>Renders in EEVEE and Cycles, perfect for intros and turntables</li>
+        </ul>
+      </div>
+      <div class="media"><video src="media/build_animation.mp4" poster="images/build.jpg" autoplay muted loop playsinline preload="metadata"></video></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="split">
+      <div class="txt">
+        <div class="kicker">MarkovJunior in 2D</div>
+        <h2>135 flat models, <span class="grad">tiles or pixels.</span></h2>
+        <p>Mazes, dungeons, caves, rivers, circuits, flowers and growth patterns – each one a small MarkovJunior program, including the overlap and tile Wave Function Collapse, ConvChain and search-based models.</p>
+        <ul class="ticks">
+          <li><b>Tiles</b>: one thin voxel tile per cell, editable geometry for level layouts</li>
+          <li><b>Image plane</b>: a pixel-exact texture, fast even for huge grids</li>
+          <li>Use a 2D result as a floor plan, a texture or a game map</li>
+        </ul>
+      </div>
+      <div class="tiles">
+        <div class="tile px"><img src="media/2d/Flowers.gif" alt="Flowers model" loading="lazy"><span>Flowers</span></div>
+        <div class="tile px"><img src="media/2d/River_2D.gif" alt="River model" loading="lazy"><span>River</span></div>
+        <div class="tile px"><img src="media/2d/NystromDungeon.gif" alt="Nystrom dungeon model" loading="lazy"><span>Dungeon</span></div>
+        <div class="tile px"><img src="media/2d/Circuit.gif" alt="Circuit model" loading="lazy"><span>Circuit</span></div>
+        <div class="tile px"><img src="media/2d/Forest.gif" alt="Forest model" loading="lazy"><span>Forest</span></div>
+        <div class="tile px"><img src="media/2d/MazeGrowth_2D.gif" alt="Maze growth model" loading="lazy"><span>Maze Growth</span></div>
+        <div class="tile px"><img src="media/2d/Sewers.gif" alt="Sewers model" loading="lazy"><span>Sewers</span></div>
+        <div class="tile px"><img src="media/2d/Keys_2D.gif" alt="Keys model" loading="lazy"><span>Keys</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker teal">WFC City</div>
+    <h2>Cities you can <span class="grad-teal">walk through.</span></h2>
+    <p class="lead">Before Wave Function Collapse places a single module, Cellscape lays out a street plan: lanes and tree-lined avenues at irregular intervals, squares with fountains, gardens and courtyard blocks. Every block draws its own height and roof family, so no two blocks look alike.</p>
+    <div class="media big"><img src="images/terraces.jpg" alt="Close view of a classical terraced city: copper domes, balustrades, stairs between terraces" loading="lazy"><span class="cap">Classical City</span></div>
+    <div class="pair">
+      <div class="media"><img src="images/street.jpg" alt="Street-level view down a lane between arcaded stone buildings" loading="lazy"><span class="cap">Street level</span></div>
+      <div class="media"><img src="images/diorama.jpg" alt="A city block with a garden and courtyard, shown as a diorama" loading="lazy"><span class="cap">Blocks, gardens, courtyards</span></div>
+    </div>
+    <div class="feat">
+      <div class="card"><div class="ic teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-6h6v6"/></svg></div><h3>Real architecture</h3><p>Terraces with balustrades, stairs, bridges, porticos, arcades, balconies, round towers with domes, hip and gable roofs that fit any footprint.</p></div>
+      <div class="card"><div class="ic teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><path d="M8 7l4-4 4 4M8 17l4 4 4-4M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg></div><h3>Infinite</h3><p>Solved chunk by chunk with fixed borders: extend in ±X / ±Y without seams, or switch on <b>Explore</b> and the city grows around your view.</p></div>
+      <div class="card"><div class="ic teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/><path d="M9 12l2 2 4-4"/></svg></div><h3>Regions</h3><p>Drop a box and allow or forbid tags inside it – only parks here, no towers there – then regenerate just that region.</p></div>
+      <div class="card"><div class="ic teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V12M12 12C12 7 8 4 4 4c0 5 3 8 8 8zM12 12c0-4 3-7 8-7 0 4-3 7-8 7z"/></svg></div><h3>Real trees</h3><p>Trees grown by a branching tree generator – street trees, cypresses, umbrella pines, cherry blossom. No lollipops.</p></div>
+      <div class="card"><div class="ic teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/><path d="M3.3 7.6L12 13l8.7-5.4M12 22.8V13"/></svg></div><h3>Your own modules</h3><p>Model tiles in a 1 × 1 × 1 cell; sockets are read from the faces automatically. Weights and rotation per module.</p></div>
+      <div class="card"><div class="ic teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v3h16v-3"/></svg></div><h3>Bake &amp; export</h3><p>A city is one light point cloud instanced by Geometry Nodes. Bake it to a mesh, or export GLB / FBX for game engines.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker teal">Ten styles</div>
+    <h2>One generator, <span class="grad-teal">ten cities.</span></h2>
+    <p class="lead">Each style has its own modules, materials, trees and street plan: the Japanese town stays low, Cyberpunk and Brutalist build high, the Tree City is full of gardens, the Desert has large bazaar squares.</p>
+    <div class="styles big">
+      <div class="style"><img src="images/styles/classical.jpg" alt="" loading="lazy"><div><b>Classical</b><small>Stone, copper domes, terraces</small></div></div>
+      <div class="style"><img src="images/styles/mediterranean.jpg" alt="" loading="lazy"><div><b>Mediterranean</b><small>Pastel houses, canals, quays</small></div></div>
+      <div class="style"><img src="images/styles/japanese.jpg" alt="" loading="lazy"><div><b>Japanese Old Town</b><small>Timber, curved roofs, pagodas</small></div></div>
+      <div class="style"><img src="images/styles/gothic.jpg" alt="" loading="lazy"><div><b>Dark Gothic</b><small>Pointed arches, spires</small></div></div>
+      <div class="style"><img src="images/styles/desert.jpg" alt="" loading="lazy"><div><b>Desert Palace</b><small>Onion domes, bazaars, palms</small></div></div>
+      <div class="style"><img src="images/styles/cyberpunk.jpg" alt="" loading="lazy"><div><b>Cyberpunk</b><small>Neon megacity at night</small></div></div>
+      <div class="style"><img src="images/styles/steampunk.jpg" alt="" loading="lazy"><div><b>Steampunk</b><small>Brick, copper pipes, clocks</small></div></div>
+      <div class="style"><img src="images/styles/space.jpg" alt="" loading="lazy"><div><b>Space Colony</b><small>Habitats, tubes, landing pads</small></div></div>
+      <div class="style"><img src="images/styles/tree.jpg" alt="" loading="lazy"><div><b>Fantasy Tree City</b><small>Giant trunks, rope bridges</small></div></div>
+      <div class="style"><img src="images/styles/brutalist.jpg" alt="" loading="lazy"><div><b>Brutalist</b><small>Concrete megastructures</small></div></div>
+    </div>
+    <p class="muted" style="margin-top:16px; font-size:15px">Plus six more tilesets: Voxel City, Kenney City (CC0), Modern City, Dungeon, Space Station – and your own collection.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="split">
+      <div class="txt">
+        <div class="kicker">Looks</div>
+        <h2>From flat colour <span class="grad">to night lights.</span></h2>
+        <p>The <b>Look</b> panel shades every result with one click, and <b>Setup Scene</b> adds sky, sun, soft shadows and AgX colour management – by day or by night.</p>
+        <ul class="ticks">
+          <li><b>Flat</b>: one colour per voxel symbol, the fastest</li>
+          <li><b>Palette</b>: one shared palette texture with themes (Autumn, Winter, Gothic, White City, Night) and glowing windows; load your own <code>.gpl</code> / <code>.csv</code> palette</li>
+          <li><b>Detailed</b>: procedural brick, stone, wood, glass and foliage with bevels, window frames, grass tufts and leafy crowns</li>
+          <li>WFC cities ship with PBR textures (CC0) packed into the file</li>
+        </ul>
+      </div>
+      <div class="media"><img src="images/night.jpg" alt="A cyberpunk city at night with glowing neon windows" loading="lazy"><span class="cap">Cyberpunk at night</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Overview</div>
+    <h2>See it <span class="grad">in motion.</span></h2>
+    <div class="media big"><video src="media/cellscape_overview.mp4" poster="images/miniature.jpg" controls playsinline preload="none"></video></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="split">
+      <div class="media"><img src="images/in_blender.jpg" alt="Cellscape's WFC City panel in Blender next to a generated classical city" loading="lazy"></div>
+      <div class="txt">
+        <div class="kicker">Specifications</div>
+        <h2>Made for <span class="grad">Blender.</span></h2>
+        <div class="spec">
+          <dl>
+            <dt>Blender</dt><dd>4.2 or newer, tested on 4.5 LTS and 5.2</dd>
+            <dt>Installation</dt><dd>Extension zip, drag &amp; drop</dd>
+            <dt>Dependencies</dt><dd>None – pure Python and NumPy</dd>
+          </dl>
+          <dl>
+            <dt>Where</dt><dd>3D Viewport › Sidebar (<kbd>N</kbd>) › Cellscape</dd>
+            <dt>Performance</dt><dd>Generation runs in the background; Blender stays responsive</dd>
+            <dt>Output</dt><dd>Regular objects: edit, render, export</dd>
+          </dl>
+        </div>
+        <h3 style="margin-top:26px">What's included</h3>
+        <ul class="ticks">
+          <li>The add-on with 187 model presets and 16 WFC tilesets</li>
+          <li>CC0 textures (ambientCG) and the Kenney City Kit (CC0)</li>
+          <li>Full documentation – also <a href="docs.html">online</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="credits">
+  <div class="wrap">
+    <div class="kicker">Credits &amp; licences</div>
+    <p>Cellscape is released under the MIT licence. Results you generate are yours to use, including commercially. MarkovJunior © 2022 Maxim Gumin (MIT) – the original models, tilesets and samples are included with their licence. Kenney City Kit by Kenney (CC0). Textures by ambientCG (CC0). The web demo uses three.js (MIT).</p>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>Start growing <span class="grad">your city.</span></h2>
+    <p class="lead" style="margin:0 auto 24px">Install, press <kbd>N</kbd>, pick a style and press Generate.</p>
+    <div class="cta-row" style="justify-content:center">
+      <a class="btn" href="#demo">▶ Play the demo again</a>
+      <a class="btn ghost" href="docs.html">Documentation</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">Cellscape for Blender · <a href="docs.html">Documentation</a> · <a href="demo.html">Full-screen demo</a></div>
+</footer>
+
+<script src="assets/embed.js"></script>
+<script type="module">
+import { mountDemo } from './demo/viewer.js';
+mountDemo(document.getElementById('demo-root'), { model: 'Pagoda' });
+</script>
+</body>
+</html>
