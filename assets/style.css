@@ -33,6 +33,7 @@ b, strong { color: var(--text); }
 .kicker.teal { color: var(--teal); }
 .lead { font-size: clamp(17px, 2vw, 20px); color: #d9dbe0; max-width: 780px; }
 .media { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0,0,0,.45); background: #000; }
+img { height: auto; }  /* images carry width/height (tools/site/img_dims.js): the page keeps its height while they load */
 .media img, .media video { width: 100%; }
 html.framed { overflow: hidden; }  /* inside a store's iframe: the host page scrolls, never the frame */
 html.framed .web-only { display: none; }  /* links to the other pages of the site */
