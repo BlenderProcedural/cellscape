@@ -35,6 +35,7 @@ b, strong { color: var(--text); }
 .media { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0,0,0,.45); background: #000; }
 .media img, .media video { width: 100%; }
 html.framed { overflow: hidden; }  /* inside a store's iframe: the host page scrolls, never the frame */
+html.framed .web-only { display: none; }  /* links to the other pages of the site */
 .media.yt { aspect-ratio: 16 / 9; }
 .media.yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .cap { position: absolute; left: 12px; bottom: 12px; padding: 5px 11px; border-radius: 999px; font-size: 13px; font-weight: 600;
@@ -57,6 +58,7 @@ ul.ticks.teal li::before { background: var(--teal); box-shadow: 3px 3px 0 rgba(9
 .split > *, .grid2 > *, .grid3 > *, .grid4 > * { min-width: 0; }
 .split { display: grid; grid-template-columns: 1fr 1.25fr; gap: 44px; align-items: center; }
 .split.rev { grid-template-columns: 1.25fr 1fr; }
+.stack { display: grid; gap: 14px; }
 .split.rev > .txt { order: 2; }
 .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }

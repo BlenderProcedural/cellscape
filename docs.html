@@ -6,7 +6,7 @@
 <title>Cellscape Docs</title>
 <meta name="description" content="Documentation for Cellscape, the Blender add-on for MarkovJunior models and infinite Wave Function Collapse cities: installation, quick start, models, build animation, looks, WFC City, regions, custom modules, performance and troubleshooting.">
 <link rel="icon" href="images/logo.svg">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=3">
 <style>
 body { font-size: 16.5px; line-height: 1.65; }
 .wrap { max-width: 960px; }
@@ -81,7 +81,7 @@ figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; }
 <p><b>Make it look good</b>: in the <b>Look</b> panel press <b>Setup Scene</b> (sky, sun, shadows, colour management), then render with EEVEE or Cycles.</p>
 </div></section>
 <section id="s3-models-markovjunior"><div class="wrap"><h2><span class="n">3</span>Models (MarkovJunior)</h2>
-<div class="demo-frame"><iframe src="demo.html?model=Castle" title="Cellscape MarkovJunior web demo" loading="lazy" allow="fullscreen"></iframe></div><p class="demo-cap">Try it right here: this is Cellscape's MarkovJunior interpreter running in the browser with 21 of the 3D models. Pick a model, press <b>New seed</b> and watch the rules build it; drag to orbit. The same model and seed give the same result in Blender. <a href="demo.html">Open the demo full screen</a>.</p>
+<div class="demo-frame"><iframe src="demo.html?model=Castle" title="Cellscape MarkovJunior web demo" loading="lazy" allow="fullscreen"></iframe></div><p class="demo-cap">Try it right here: this is Cellscape's MarkovJunior interpreter running in the browser with 21 of the 3D models. Pick a model, press <b>New seed</b> and watch the rules build it; drag to orbit. The same model and seed give the same result in Blender.<span class="web-only"> <a href="demo.html">Open the demo full screen</a>.</span></p>
 <p>MarkovJunior builds a result by rewriting a grid of symbols, rule after rule, until no rule applies. Each model is a small program (an XML file) – a maze grower, a dungeon digger, a castle builder.</p>
 <h3 id="s3-1-choosing-a-model">3.1 Choosing a model</h3>
 <div class="tbl-wrap"><table><thead><tr><th>Control</th><th>What it does</th></tr></thead><tbody><tr><td><b>Category</b></td><td>Buildings, Architecture &amp; Megastructures, City &amp; Infrastructure, Mazes &amp; Paths, Pipes &amp; Knots, Terrain &amp; Nature, Cells &amp; Patterns, five 2D categories and Other</td></tr><tr><td><b>Search</b> (magnifier)</td><td>Find a model by name across all categories</td></tr><tr><td><b>Gallery</b></td><td>Click the large preview to see every model of the category with its icon</td></tr><tr><td><b>Model</b></td><td>The same choice as a list; models marked <i>(slow)</i> can take a minute or more</td></tr></tbody></table></div>
@@ -143,7 +143,7 @@ figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; }
 </div></section>
 
 <footer>
-  <div class="wrap">Cellscape for Blender · <a href="index.html">Product page</a> · <a href="demo.html">Web demo</a></div>
+  <div class="wrap">Cellscape for Blender<span class="web-only"> · <a href="index.html">Product page</a> · <a href="demo.html">Web demo</a></span></div>
 </footer>
 <script src="assets/embed.js"></script>
 </body>

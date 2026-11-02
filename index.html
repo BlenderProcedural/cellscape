@@ -9,7 +9,7 @@
 <meta property="og:description" content="187 MarkovJunior models and an infinite Wave Function Collapse city generator with 10 architectural styles. Try the live MarkovJunior demo in your browser.">
 <meta property="og:image" content="images/letters_real.jpg">
 <link rel="icon" href="images/logo.svg">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=3">
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js",
@@ -99,7 +99,7 @@
     <div class="cta-row">
       <a class="btn" href="#demo">▶ Try the live demo</a>
       <a class="btn ghost" href="#tutorial">▶ Watch the tutorial</a>
-      <a class="btn ghost" href="docs.html">Read the documentation</a>
+      <a class="btn ghost web-only" href="docs.html">Read the documentation</a>
     </div>
     <div class="stats">
       <div><b>187</b><span>procedural models</span></div>
@@ -303,7 +303,10 @@
           <li>WFC cities ship with PBR textures (CC0) packed into the file</li>
         </ul>
       </div>
-      <div class="media"><img src="images/night.jpg" alt="A cyberpunk city at night with glowing neon windows" loading="lazy"><span class="cap">Cyberpunk at night</span></div>
+      <div class="stack">
+        <div class="media"><img src="images/day.jpg" alt="A terraced classical city with copper domes in warm golden haze" loading="lazy"><span class="cap">By day</span></div>
+        <div class="media"><img src="images/cities/gothic.jpg" alt="A gothic city at dusk with lit windows" loading="lazy"><span class="cap">At dusk, windows lit</span></div>
+      </div>
     </div>
   </div>
 </section>
@@ -339,7 +342,7 @@
         <ul class="ticks">
           <li>The add-on with 187 model presets and 16 WFC tilesets</li>
           <li>CC0 textures (ambientCG) and the Kenney City Kit (CC0)</li>
-          <li>Full documentation – also <a href="docs.html">online</a></li>
+          <li>Full documentation<span class="web-only"> – also <a href="docs.html">online</a></span></li>
         </ul>
       </div>
     </div>
@@ -359,13 +362,13 @@
     <p class="lead" style="margin:0 auto 24px">Install, press <kbd>N</kbd>, pick a style and press Generate.</p>
     <div class="cta-row" style="justify-content:center">
       <a class="btn" href="#demo">▶ Play the demo again</a>
-      <a class="btn ghost" href="docs.html">Documentation</a>
+      <a class="btn ghost web-only" href="docs.html">Documentation</a>
     </div>
   </div>
 </section>
 
 <footer>
-  <div class="wrap">Cellscape for Blender · <a href="docs.html">Documentation</a> · <a href="demo.html">Full-screen demo</a></div>
+  <div class="wrap">Cellscape for Blender<span class="web-only"> · <a href="docs.html">Documentation</a> · <a href="demo.html">Full-screen demo</a></span></div>
 </footer>
 
 <script>
