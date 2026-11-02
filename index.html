@@ -36,6 +36,10 @@
 .tile { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #1a1d24; aspect-ratio: 1; }
 .tile img { width: 100%; height: 100%; object-fit: cover; image-rendering: auto; }
 .tile.px img { image-rendering: pixelated; }
+.tiles.paint { grid-template-columns: repeat(2, 1fr); margin-top: 18px; }
+.tiles.paint .tile { aspect-ratio: 480 / 297; }
+.paint-keys { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
+@media (max-width: 560px) { .tiles.paint, .paint-keys { grid-template-columns: 1fr; } }
 .tile span { position: absolute; left: 8px; bottom: 8px; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
   background: rgba(12,14,19,.75); color: #eef0f3; }
 .gal { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0,0,0,.45); background: #000; }
@@ -93,6 +97,7 @@
       <span class="chip t">16 WFC tilesets</span>
       <span class="chip t">10 city styles</span>
       <span class="chip t">Infinite cities</span>
+      <span class="chip t">Build by clicking</span>
       <span class="chip">Blender 4.2 – 5.2</span>
     </div>
     <div class="media"><img src="images/letters_real.jpg" alt="The word CELLSCAPE spelled with buildings in the middle of a generated classical city at golden hour" fetchpriority="high"></div>
@@ -286,6 +291,33 @@
       <button type="button" data-i="9"><img src="images/styles/brutalist.jpg" alt="" loading="lazy"><span>Brutalist</span></button>
     </div>
     <p class="muted" style="margin-top:16px; font-size:15px">Plus six more tilesets: Voxel City, Kenney City (CC0), Modern City, Dungeon, Space Station – and your own collection.</p>
+  </div>
+</section>
+
+<section id="build-by-clicking">
+  <div class="wrap">
+    <div class="kicker teal">New in 1.11 · Build by Clicking</div>
+    <h2>Click a city <span class="grad-teal">into shape.</span></h2>
+    <p class="lead">Start an empty city, or open one you generated, and build it with the mouse. A click raises a building or adds a storey, a drag lays a whole row, Ctrl paints gardens, Alt digs canals, right-click takes storeys away. After every click Wave Function Collapse solves the cells around it again, so walls, windows, doors, roofs, terraces, stairs and streets adjust themselves – in a few milliseconds.</p>
+    <div class="media big"><video src="media/build_by_clicking.mp4" poster="images/paint_poster.jpg" controls playsinline preload="none"></video></div>
+    <div class="tiles paint">
+      <div class="tile"><img src="media/paint/classical.gif" alt="A Classical City built by clicking" loading="lazy"><span>Classical</span></div>
+      <div class="tile"><img src="media/paint/mediterranean.gif" alt="A Mediterranean Canal City built by clicking, with a canal" loading="lazy"><span>Mediterranean</span></div>
+      <div class="tile"><img src="media/paint/japanese.gif" alt="A Japanese Old Town built by clicking" loading="lazy"><span>Japanese</span></div>
+      <div class="tile"><img src="media/paint/gothic.gif" alt="A Dark Gothic City built by clicking" loading="lazy"><span>Dark Gothic</span></div>
+      <div class="tile"><img src="media/paint/desert.gif" alt="A Desert Palace and Bazaar built by clicking" loading="lazy"><span>Desert Palace</span></div>
+      <div class="tile"><img src="media/paint/cyberpunk.gif" alt="A Cyberpunk Megacity built by clicking" loading="lazy"><span>Cyberpunk</span></div>
+      <div class="tile"><img src="media/paint/steampunk.gif" alt="A Steampunk Industrial City built by clicking" loading="lazy"><span>Steampunk</span></div>
+      <div class="tile"><img src="media/paint/space.gif" alt="A Space Colony built by clicking" loading="lazy"><span>Space Colony</span></div>
+      <div class="tile"><img src="media/paint/tree.gif" alt="A Fantasy Tree City built by clicking" loading="lazy"><span>Fantasy Tree</span></div>
+      <div class="tile"><img src="media/paint/brutalist.gif" alt="A Brutalist Dystopia built by clicking" loading="lazy"><span>Brutalist</span></div>
+    </div>
+    <ul class="ticks paint-keys">
+      <li><b>Click</b> on the ground: a building · on a roof: one more storey</li>
+      <li><b>Drag</b>: a row of buildings, a storey along a roof line, a strip of gardens</li>
+      <li><b>Ctrl</b>: gardens · <b>Alt</b>: canals · <b>Right-click</b> or <b>Shift</b>: remove</li>
+      <li><b>Ctrl+Z</b> undoes every step; one session is one Blender undo step</li>
+    </ul>
   </div>
 </section>
 
