@@ -11,10 +11,11 @@ media and a playable MarkovJunior demo – not the add-on itself.
 
 ## The web demo
 
-`demo/mj.js` is Cellscape's MarkovJunior interpreter in JavaScript (the rule nodes `one`, `all`, `prl`, `markov`,
-`sequence` and `path`), with the same .NET random number generator as the original. A model and seed give exactly
+`demo/mj.js` is Cellscape's MarkovJunior interpreter in JavaScript (the nodes `one`, `all`, `prl`, `markov`,
+`sequence`, `path`, `map` and tile `wfc`), with the same .NET random number generator as the original. A model and seed give exactly
 the same grid as Cellscape in Blender. `demo/viewer.js` shows the grid with three.js (loaded from jsDelivr),
-`demo/models.js` holds 20 of the 3D models (16 original Cellscape models and four MarkovJunior classics).
+`demo/models.js` holds 21 of the 3D models (ModernHouse, the 16 original Cellscape models and four classics) and the tilesets and
+.vox rules they read.
 
 ## Embedding
 

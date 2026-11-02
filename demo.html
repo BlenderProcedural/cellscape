@@ -36,7 +36,7 @@ html.framed .top { display: none; }
 <script type="module">
 import { mountDemo } from './demo/viewer.js';
 const q = new URLSearchParams(location.search);
-mountDemo(document.getElementById('demo-root'), { model: q.get('model') || 'Pagoda', seed: q.has('seed') ? +q.get('seed') : undefined });
+mountDemo(document.getElementById('demo-root'), { model: q.get('model') || 'ModernHouse', seed: q.has('seed') ? +q.get('seed') : undefined });
 </script>
 </body>
 </html>

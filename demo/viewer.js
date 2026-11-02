@@ -3,10 +3,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Interpreter } from './mj.js';
-import { MODELS, PALETTE } from './models.js';
+import { MODELS, PALETTE, RESOURCES } from './models.js';
 
 const BASE = new URL('.', import.meta.url).href;
 const POP = 0.42;             // seconds a new voxel takes to settle
+const FOOT = 40;              // world units every grid footprint is scaled to
 const RUN = 7;                // seconds a model takes to grow at 1×
 const SPEEDS = [0.25, 0.5, 1, 2, 4, 8, Infinity];  // multiples of the model's own pace
 const ICON = {
@@ -55,6 +56,10 @@ const css = `
 .csd-done { position: absolute; right: 14px; top: 12px; padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 700;
   background: rgba(67,196,122,.15); border: 1px solid rgba(67,196,122,.45); color: #9fe8bd; opacity: 0; transition: opacity .3s; pointer-events: none; }
 .csd-done.show { opacity: 1; }
+.csd-note { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); padding: 6px 13px; border-radius: 999px; font-size: 12.5px;
+  background: rgba(255,181,71,.16); border: 1px solid rgba(255,181,71,.45); color: #ffe2b3; opacity: 0; transition: opacity .3s; pointer-events: none;
+  white-space: nowrap; max-width: 90%; overflow: hidden; text-overflow: ellipsis; }
+.csd-note.show { opacity: 1; }
 .csd-err { position: absolute; inset: 0; display: none; place-items: center; text-align: center; padding: 30px; color: #ffb4a8; }
 .csd-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; border-top: 1px solid var(--csd-line); background: #11141b; }
 .csd-grp { display: flex; align-items: center; gap: 6px; }
@@ -116,7 +121,9 @@ function describe(node, branch) {
   if (!node || !node.xelem) return '';
   const x = node.xelem;
   const tag = x.tag;
-  const comment = x.attrs.comment || (branch && branch.xelem.attrs.comment) || '';
+  const comment = x.attrs.comment || (branch && branch.xelem && branch.xelem.attrs.comment) || '';
+  if (tag === 'wfc') return `<b>wfc</b>Wave Function Collapse · tileset <code>${x.attrs.tileset}</code>`;
+  if (tag === 'map') return `<b>map</b>rewrite into a new grid · scale <code>${x.attrs.scale}</code>`;
   let rule = '';
   const r = x.attrs.in !== undefined ? x.attrs : (x.children.find((c) => c.tag === 'rule') || {}).attrs;
   if (r && r.in !== undefined) {
@@ -149,7 +156,8 @@ export function mountDemo(root, opts = {}) {
   const done = el('div', 'csd-done', 'Finished');
   const err = el('div', 'csd-err');
   const prog = el('div', 'csd-prog', '<i></i>');
-  stage.append(info, ruleRow, done, err, prog);
+  const note = el('div', 'csd-note');
+  stage.append(info, ruleRow, done, err, prog, note);
 
   const btnPlay = el('button', 'csd-btn main', ICON.pause);
   btnPlay.title = 'Play / pause (Space)';
@@ -212,12 +220,12 @@ export function mountDemo(root, opts = {}) {
   const mat = new THREE.MeshStandardMaterial({ map: faceTexture(), roughness: 0.82, metalness: 0 });
   let mesh = null, base = null, ground = null;
 
-  // --- state
-  let model = null, ip = null, palette = [], visible = null, born = null, bornSeen = 0;
-  let playing = true, finished = false, seenChanges = 0, dirty = true, userTouched = -1e9;
+  // --- state. Every grid is shown at the same footprint (FOOT world units), so a model whose grid is rewritten
+  // into a finer one (map, wfc) keeps its size on screen.
+  let model = null, ip = null, probe = null, palette = [];
+  let shown = null;  // { grid, MX, MY, MZ, s, prev, born }
+  let playing = true, finished = false, dirty = true, userTouched = -1e9, changedIdx = new Int32Array(0);
   let estSteps = 0, inView = !('IntersectionObserver' in window), lastNow = '', budget = 0, lastFrame = 0;
-  const tmp = new THREE.Matrix4();
-  const col = new THREE.Color();
 
   function randomSeed() {
     return Math.floor(Math.random() * 1000000);
@@ -226,6 +234,13 @@ export function mountDemo(root, opts = {}) {
   function setPlaying(p) {
     playing = p;
     btnPlay.innerHTML = p && !finished ? ICON.pause : ICON.play;
+  }
+
+  function toast(text) {
+    note.textContent = text;
+    note.classList.add('show');
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => note.classList.remove('show'), 4500);
   }
 
   function select(k, seed) {
@@ -237,45 +252,69 @@ export function mountDemo(root, opts = {}) {
     }
     err.style.display = 'none';
     try {
-      ip = new Interpreter(m.xml, m.MX, m.MY, m.MZ);
+      ip = new Interpreter(m.xml, m.MX, m.MY, m.MZ, { resources: RESOURCES, gif: true });
+      probe = new Interpreter(m.xml, m.MX, m.MY, m.MZ, { resources: RESOURCES });
     } catch (e) {
       err.textContent = 'Could not load ' + m.label + ': ' + e.message;
       err.style.display = 'grid';
       return;
     }
     model = m;
-    const colors = { ...PALETTE, ...m.colors };
-    palette = ip.grid.characters.map((ch) => new THREE.Color().setHex(parseInt(colors[ch] || 'ff00ff', 16), THREE.SRGBColorSpace));
     info.querySelector('h4').textContent = m.label;
     info.querySelector('p').textContent = m.desc;
-    info.querySelector('.dims').textContent = `${m.MX} × ${m.MY} × ${m.MZ} grid · ${ip.grid.C} symbols`;
-    buildScene(m);
+    fitCamera(m.MX, m.MY, m.MZ);
     start(seed);
   }
 
+  // runs the seed once off screen: the progress bar learns the length, and a seed that ends in a contradiction
+  // (some WFC models have them) is skipped for the next one, like Cellscape's "Retry Failed Seeds"
   function start(seed) {
-    seedIn.value = seed;
-    ip.start(seed, model.steps);
-    const n = model.MX * model.MY * model.MZ;
-    born = new Float32Array(n).fill(-1e9);
-    seenChanges = 0;
-    bornSeen = 0;
+    let s = seed;
+    for (let k = 0; k < 40; k++, s++) {
+      probe.run(s, model.steps);
+      if (!probe.failed) break;
+    }
+    if (probe.failed) s = seed;
+    estSteps = probe.counter;
+    if (s !== seed) toast(`Seed ${seed} runs into a contradiction – showing ${s}`);
+    seedIn.value = s;
+    ip.start(s, model.steps);
     finished = false;
-    estSteps = 0;
     done.classList.remove('show');
     lastNow = '';
     ruleRow.querySelector('.csd-now').innerHTML = '<b>start</b>' + (ip.origin ? 'one cell in the middle' : 'empty grid');
-    const now = performance.now() / 1000;
-    for (let i = 0; i < n; i++) if (ip.grid.state[i]) born[i] = now;
-    dirty = true;
+    showGrid(ip.grid, performance.now() / 1000);
+    stats();
     setPlaying(true);
   }
 
-  function buildScene(m) {
+  function fitCamera(MX, MY, MZ) {
+    const s = FOOT / Math.max(MX, MY);
+    const W = MX * s, D = MY * s, H = MZ * s;
+    const R = Math.hypot(W, D, H) * 0.5;
+    controls.target.set(0, H * 0.32, 0);
+    const dist = R / Math.sin(THREE.MathUtils.degToRad(camera.fov * 0.5)) * 0.8;
+    camera.position.copy(controls.target).addScaledVector(new THREE.Vector3(1, 0.62, 1.15).normalize(), dist);
+    camera.near = dist * 0.05;
+    camera.far = dist * 6;
+    camera.updateProjectionMatrix();
+    controls.minDistance = R * 0.8;
+    controls.maxDistance = dist * 2.2;
+    const sh = sun.shadow.camera, e = R * 1.4;
+    sh.left = -e; sh.right = e; sh.top = e; sh.bottom = -e; sh.near = 1; sh.far = R * 6;
+    sh.updateProjectionMatrix();
+    sun.position.set(R * 1.6, R * 2.6, R * 0.9);
+    sun.target.position.set(0, 0, 0);
+    fill.position.set(-R, R * 0.6, -R * 1.4);
+    resize();
+  }
+
+  // a new grid on screen: instance buffer, plinth, palette; what is already there pops in as a wave from below
+  function showGrid(g, now) {
     if (mesh) { scene.remove(mesh); mesh.dispose(); }
     if (base) { scene.remove(base); base.geometry.dispose(); base.material.dispose(); }
     if (ground) { scene.remove(ground); ground.geometry.dispose(); ground.material.dispose(); }
-    const n = m.MX * m.MY * m.MZ;
+    const n = g.state.length, s = FOOT / Math.max(g.MX, g.MY);
     mesh = new THREE.InstancedMesh(geo, mat, n);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3);
@@ -284,45 +323,54 @@ export function mountDemo(root, opts = {}) {
     mesh.castShadow = mesh.receiveShadow = true;
     mesh.frustumCulled = false;
     scene.add(mesh);
-    // a dark plinth under the grid, like a diorama base
     const pad = 1.5;
-    base = new THREE.Mesh(new THREE.BoxGeometry(m.MX + pad * 2, 1.2, m.MY + pad * 2),
+    base = new THREE.Mesh(new THREE.BoxGeometry(g.MX * s + pad * 2, 1.2, g.MY * s + pad * 2),
       new THREE.MeshStandardMaterial({ color: 0x232833, roughness: 0.9 }));
     base.position.y = -0.6;
     base.receiveShadow = true;
     scene.add(base);
-    ground = new THREE.Mesh(new THREE.CircleGeometry(Math.max(m.MX, m.MY) * 3, 64), new THREE.ShadowMaterial({ opacity: 0.32 }));
+    ground = new THREE.Mesh(new THREE.CircleGeometry(FOOT * 3, 64), new THREE.ShadowMaterial({ opacity: 0.32 }));
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -1.2;
     ground.receiveShadow = true;
     scene.add(ground);
-    visible = new Uint8Array(n);
+    const colors = { ...PALETTE, ...model.colors };
+    palette = g.characters.map((ch) => new THREE.Color().setHex(parseInt(colors[ch] || 'ff00ff', 16), THREE.SRGBColorSpace));
+    const born = new Float32Array(n).fill(-1e9);
+    for (let i = 0; i < n; i++) if (g.state[i]) born[i] = now + (i / n) * 0.35;
+    shown = { grid: g, MX: g.MX, MY: g.MY, MZ: g.MZ, s, prev: g.state.slice(), born };
+    if (changedIdx.length < n) changedIdx = new Int32Array(n);
+    info.querySelector('.dims').textContent = `${g.MX} × ${g.MY} × ${g.MZ} grid · ${g.C} symbols`;
+    dirty = true;
+  }
 
-    const R = Math.hypot(m.MX, m.MY, m.MZ) * 0.5;
-    const cy = m.MZ * 0.32;
-    controls.target.set(0, cy, 0);
-    const dist = R / Math.sin(THREE.MathUtils.degToRad(camera.fov * 0.5)) * 0.8;
-    const dir = new THREE.Vector3(1, 0.62, 1.15).normalize();
-    camera.position.copy(controls.target).addScaledVector(dir, dist);
-    camera.near = dist * 0.05;
-    camera.far = dist * 6;
-    camera.updateProjectionMatrix();
-    controls.minDistance = R * 0.8;
-    controls.maxDistance = dist * 2.2;
-    const sh = sun.shadow.camera;
-    const s = R * 1.25;
-    sh.left = -s; sh.right = s; sh.top = s; sh.bottom = -s; sh.near = 1; sh.far = R * 6;
-    sh.updateProjectionMatrix();
-    sun.position.set(R * 1.6, R * 2.6, R * 0.9);
-    sun.target.position.set(0, 0, 0);
-    fill.position.set(-R, R * 0.6, -R * 1.4);
-    resize();
+  // what changed since the last frame (rules log their changes, a wfc writes its tiles directly, so compare)
+  function absorb(now) {
+    const g = ip.grid;
+    if (g !== shown.grid) {
+      showGrid(g, now);
+    } else {
+      const st = g.state, prev = shown.prev, born = shown.born;
+      let n = 0;
+      for (let i = 0; i < st.length; i++) if (st[i] !== prev[i]) changedIdx[n++] = i;
+      for (let j = 0; j < n; j++) {
+        const i = changedIdx[j];
+        born[i] = st[i] ? now + (n > 400 ? (j / n) * 0.25 : 0) : -1e9;  // big steps light up as a short wave
+        prev[i] = st[i];
+      }
+      if (n) dirty = true;
+    }
+    const d = describe(ip.active, ip.activeBranch);
+    if (d && d !== lastNow) {
+      ruleRow.querySelector('.csd-now').innerHTML = d;
+      lastNow = d;
+    }
   }
 
   // instance buffer from the grid: hidden symbol 0, voxels buried on all six sides are skipped
   function rebuild(now) {
-    const { MX, MY, MZ } = model;
-    const state = ip.grid.state;
+    const { MX, MY, MZ, s, born } = shown;
+    const state = shown.grid.state;
     const MXY = MX * MY;
     const mArr = mesh.instanceMatrix.array, cArr = mesh.instanceColor.array;
     const ox = (MX - 1) / 2, oy = (MY - 1) / 2;
@@ -335,25 +383,25 @@ export function mountDemo(root, opts = {}) {
           const age = now - born[i];
           if (age > POP && x > 0 && y > 0 && z > 0 && x < MX - 1 && y < MY - 1 && z < MZ - 1 &&
               state[i - 1] && state[i + 1] && state[i - MX] && state[i + MX] && state[i - MXY] && state[i + MXY]) continue;
-          let s = 1, drop = 0, glow = 0;
+          let k = 1, drop = 0, glow = 0;
           if (age < POP) {
             const t = Math.max(age, 0) / POP;
             const e = 1 - (1 - t) * (1 - t) * (1 - t);
-            s = 0.25 + 0.75 * e;
+            k = 0.25 + 0.75 * e;
             drop = (1 - e) * 1.6;
             glow = (1 - t) * 1.6;
             animating = true;
           }
-          const o = count * 16;
-          mArr[o] = s; mArr[o + 1] = 0; mArr[o + 2] = 0; mArr[o + 3] = 0;
-          mArr[o + 4] = 0; mArr[o + 5] = s; mArr[o + 6] = 0; mArr[o + 7] = 0;
-          mArr[o + 8] = 0; mArr[o + 9] = 0; mArr[o + 10] = s; mArr[o + 11] = 0;
-          mArr[o + 12] = x - ox; mArr[o + 13] = z + 0.5 + drop; mArr[o + 14] = -(y - oy); mArr[o + 15] = 1;
+          const o = count * 16, q = k * s;
+          mArr[o] = q; mArr[o + 1] = 0; mArr[o + 2] = 0; mArr[o + 3] = 0;
+          mArr[o + 4] = 0; mArr[o + 5] = q; mArr[o + 6] = 0; mArr[o + 7] = 0;
+          mArr[o + 8] = 0; mArr[o + 9] = 0; mArr[o + 10] = q; mArr[o + 11] = 0;
+          mArr[o + 12] = (x - ox) * s; mArr[o + 13] = (z + 0.5 + drop) * s; mArr[o + 14] = -(y - oy) * s; mArr[o + 15] = 1;
           const c = palette[v] || palette[0];
-          const k = count * 3;
-          cArr[k] = c.r * (1 + glow) + glow * 0.25;
-          cArr[k + 1] = c.g * (1 + glow) + glow * 0.18;
-          cArr[k + 2] = c.b * (1 + glow) + glow * 0.08;
+          const kc = count * 3;
+          cArr[kc] = c.r * (1 + glow) + glow * 0.25;
+          cArr[kc + 1] = c.g * (1 + glow) + glow * 0.18;
+          cArr[kc + 2] = c.b * (1 + glow) + glow * 0.08;
           count++;
         }
       }
@@ -388,24 +436,6 @@ export function mountDemo(root, opts = {}) {
     return k;
   }
 
-  function absorbChanges(now) {
-    const ch = ip.changes;
-    if (ch.length === seenChanges) return;
-    const n = ch.length - seenChanges;
-    // big parallel steps light up over a short wave instead of all at once
-    for (let j = seenChanges; j < ch.length; j++) {
-      const i = ch[j];
-      born[i] = ip.grid.state[i] ? now + (n > 400 ? ((j - seenChanges) / n) * 0.25 : 0) : -1e9;
-    }
-    seenChanges = ch.length;
-    dirty = true;
-    const d = describe(ip.active, ip.activeBranch);
-    if (d && d !== lastNow) {
-      ruleRow.querySelector('.csd-now').innerHTML = d;
-      lastNow = d;
-    }
-  }
-
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     if (!w || !h) return;
@@ -429,7 +459,7 @@ export function mountDemo(root, opts = {}) {
       const n = Math.floor(budget);
       if (n > 0) {
         budget -= runSteps(n);
-        absorbChanges(now);
+        absorb(now);
         stats();
       }
     }
@@ -451,7 +481,7 @@ export function mountDemo(root, opts = {}) {
     if (finished) return;
     setPlaying(false);
     runSteps(1);
-    absorbChanges(performance.now() / 1000);
+    absorb(performance.now() / 1000);
     stats();
   });
   btnRestart.addEventListener('click', () => start(+seedIn.value || 0));
@@ -472,20 +502,8 @@ export function mountDemo(root, opts = {}) {
     new IntersectionObserver((es) => { inView = es[0].isIntersecting; }, { threshold: 0.05 }).observe(box);
   }
 
-  const first = Math.max(0, MODELS.findIndex((m) => m.name === (opts.model || 'Pagoda')));
+  const first = Math.max(0, MODELS.findIndex((m) => m.name === opts.model));
   select(first, opts.seed ?? randomSeed());
-  // estimate the run length once for the progress bar (the demo models finish in well under a second)
-  const estimate = () => {
-    if (!model) return;
-    try {
-      const probe = new Interpreter(model.xml, model.MX, model.MY, model.MZ);
-      probe.run(+seedIn.value, model.steps);
-      estSteps = probe.counter;
-    } catch (e) { estSteps = 0; }
-  };
-  const origStart = start;
-  start = (seed) => { origStart(seed); setTimeout(estimate, 0); };
-  setTimeout(estimate, 0);
   requestAnimationFrame(frame);
   return { select: (name, seed) => select(Math.max(0, MODELS.findIndex((m) => m.name === name)), seed ?? randomSeed()) };
 }

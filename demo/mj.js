@@ -1,4 +1,4 @@
-// MarkovJunior interpreter in JavaScript: the rule-rewriting core (one / all / prl / markov / sequence / path).
+// MarkovJunior interpreter in JavaScript: one / all / prl / markov / sequence / path, map and tile-based WFC.
 // Port of Cellscape's Python port of MarkovJunior (https://github.com/mxgmn/MarkovJunior) by Maxim Gumin,
 // MIT License. It uses the same .NET random number generator, so a seed walks through the same choices as
 // the original and as Cellscape in Blender.
@@ -216,6 +216,7 @@ export class Grid {
     const n = MX * MY * MZ;
     this.state = new Uint8Array(n);
     this.mask = new Uint8Array(n);
+    this.folder = attr(xelem, 'folder');
   }
 
   clear() {
@@ -341,25 +342,65 @@ function parsePattern(s) {
   return [result, MX, MY, MZ];
 }
 
-function loadRule(xelem, grid) {
-  if ('file' in xelem.attrs || 'fin' in xelem.attrs || 'fout' in xelem.attrs)
-    throw new MJError('rules from image files are not supported in the web demo');
+// first-appearance ordinals of the values in `data` (shared `uniques` keep several tiles consistent)
+function ords(data, uniques = []) {
+  const index = new Map(uniques.map((u, k) => [u, k]));
+  const result = new Uint8Array(data.length);
+  for (let i = 0; i < data.length; i++) {
+    let o = index.get(data[i]);
+    if (o === undefined) {
+      o = uniques.length;
+      uniques.push(data[i]);
+      index.set(data[i], o);
+    }
+    result[i] = o;
+  }
+  return [result, uniques.length];
+}
+
+// a .vox rule resource with its legend: every colour becomes the legend's symbol of the same rank
+function loadResource(ip, path, legend) {
+  if (legend === undefined) throw new MJError(`no legend for ${path}`);
+  const v = ip.vox(path);
+  const [o, amount] = ords(v.data);
+  if (amount > legend.length) throw new MJError(`the amount of colors ${amount} in ${path} is more than ${legend.length}`);
+  return [Array.from(o, (k) => legend[k]), v.MX, v.MY, v.MZ];
+}
+
+function loadRule(xelem, gin, gout, ip) {
   const inS = attr(xelem, 'in'), outS = attr(xelem, 'out');
-  if (inS === undefined) throw new MJError('no input in a rule');
-  if (outS === undefined) throw new MJError('no output in a rule');
-  const [inRect, IMX, IMY, IMZ] = parsePattern(inS);
-  const [outRect, OMX, OMY, OMZ] = parsePattern(outS);
-  if (OMZ !== IMZ || OMY !== IMY || OMX !== IMX) throw new MJError(`non-matching pattern sizes in rule in='${inS}' out='${outS}'`);
+  const finS = attr(xelem, 'fin'), foutS = attr(xelem, 'fout'), fileS = attr(xelem, 'file');
+  const legend = attr(xelem, 'legend');
+  if (gin.MZ === 1 && (finS || foutS || fileS)) throw new MJError('image rules are not supported in the web demo');
+  const filepath = (name) => `rules/${gout.folder ? gout.folder + '/' : ''}${name}.vox`;
+  let inRect, IMX, IMY, IMZ, outRect, OMX, OMY, OMZ;
+  if (fileS === undefined) {
+    if (inS === undefined && finS === undefined) throw new MJError('no input in a rule');
+    if (outS === undefined && foutS === undefined) throw new MJError('no output in a rule');
+    [inRect, IMX, IMY, IMZ] = inS !== undefined ? parsePattern(inS) : loadResource(ip, filepath(finS), legend);
+    [outRect, OMX, OMY, OMZ] = outS !== undefined ? parsePattern(outS) : loadResource(ip, filepath(foutS), legend);
+    if (gin === gout && (OMZ !== IMZ || OMY !== IMY || OMX !== IMX))
+      throw new MJError(`non-matching pattern sizes in rule in='${inS}' out='${outS}'`);
+  } else {
+    const [rect, FX, FY, FZ] = loadResource(ip, filepath(fileS), legend);
+    if (FX % 2 !== 0) throw new MJError(`odd width ${FX} in ${fileS}`);
+    IMX = OMX = FX / 2; IMY = OMY = FY; IMZ = OMZ = FZ;
+    inRect = []; outRect = [];
+    for (let z = 0; z < FZ; z++) for (let y = 0; y < FY; y++) for (let x = 0; x < FX / 2; x++) {
+      inRect.push(rect[x + y * FX + z * FX * FY]);
+      outRect.push(rect[x + FX / 2 + y * FX + z * FX * FY]);
+    }
+  }
   const inp = inRect.map((c) => {
-    if (!grid.waves.has(c)) throw new MJError(`input code ${c} is not found in codes`);
-    return grid.waves.get(c);
+    if (!gin.waves.has(c)) throw new MJError(`input code ${c} is not found in codes`);
+    return gin.waves.get(c);
   });
   const out = outRect.map((c) => {
     if (c === '*') return 0xff;
-    if (!grid.values.has(c)) throw new MJError(`output code ${c} is not found in codes`);
-    return grid.values.get(c);
+    if (!gout.values.has(c)) throw new MJError(`output code ${c} is not found in codes`);
+    return gout.values.get(c);
   });
-  return new Rule(inp, IMX, IMY, IMZ, out, OMX, OMY, OMZ, grid.C, attrFloat(xelem, 'p', 1.0));
+  return new Rule(inp, IMX, IMY, IMZ, out, OMX, OMY, OMZ, gin.C, attrFloat(xelem, 'p', 1.0));
 }
 
 function matchesAt(rule, state, si) {
@@ -371,11 +412,13 @@ function matchesAt(rule, state, si) {
 // ---------------------------------------------------------------------------------------------
 // Nodes
 
-const NODE_NAMES = ['one', 'all', 'prl', 'markov', 'sequence', 'path'];
-const UNSUPPORTED = ['map', 'convolution', 'convchain', 'wfc'];
+const NODE_NAMES = ['one', 'all', 'prl', 'markov', 'sequence', 'path', 'map', 'wfc'];
+const UNSUPPORTED = ['convolution', 'convchain'];
 
 function nodeFactory(xelem, symmetry, ip, grid) {
-  const classes = { one: OneNode, all: AllNode, prl: ParallelNode, markov: MarkovNode, sequence: SequenceNode, path: PathNode };
+  const classes = { one: OneNode, all: AllNode, prl: ParallelNode, markov: MarkovNode, sequence: SequenceNode, path: PathNode,
+    map: MapNode, wfc: TileNode };
+  if (xelem.tag === 'wfc' && !('tileset' in xelem.attrs)) throw new MJError('sample-based WFC is not supported in the web demo');
   const cls = classes[xelem.tag];
   if (!cls) throw new MJError(`node <${xelem.tag}> is not supported in the web demo`);
   const node = new cls();
@@ -400,7 +443,8 @@ class Branch {
     }
     this.nodes = children(xelem, NODE_NAMES).map((xc) => {
       const child = nodeFactory(xc, symmetry, this.ip, grid);
-      if (child instanceof Branch) child.parent = this;
+      // like the original, a map or wfc node ends the program when it is done
+      if (child instanceof Branch) child.parent = child instanceof MapNode || child instanceof WFCNode ? null : this;
       return child;
     });
   }
@@ -466,7 +510,7 @@ class RuleNode {
     const xrules = children(xelem, ['rule']);
     const rules = [];
     for (const xr of xrules.length ? xrules : [xelem]) {
-      const rule = loadRule(xr, grid);
+      const rule = loadRule(xr, grid, grid, this.ip);
       rules.push(...rule.symmetries(getSymmetry(d2, attr(xr, 'symmetry'), symmetry), d2));
     }
     for (const r of rules) r.prepare(grid.MX, grid.MY);
@@ -808,13 +852,497 @@ class PathNode {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Map: a rewrite into a new grid of another size
+
+class MapNode extends Branch {
+  load(xelem, parentSymmetry, grid) {
+    const scale = attr(xelem, 'scale');
+    if (scale === undefined) throw new MJError('scale should be specified in map node');
+    const parts = scale.split(' ');
+    if (parts.length !== 3) throw new MJError(`scale attribute '${scale}' should have 3 components separated by space`);
+    const read = (s) => (s.includes('/') ? s.split('/').map(Number) : [Number(s), 1]);
+    [[this.NX, this.DX], [this.NY, this.DY], [this.NZ, this.DZ]] = parts.map(read);
+    this.newgrid = new Grid(xelem, Math.floor(grid.MX * this.NX / this.DX), Math.floor(grid.MY * this.NY / this.DY),
+      Math.floor(grid.MZ * this.NZ / this.DZ));
+    super.load(xelem, parentSymmetry, this.newgrid);
+    const d2 = grid.MZ === 1;
+    const symmetry = getSymmetry(d2, attr(xelem, 'symmetry'), parentSymmetry);
+    this.rules = [];
+    for (const xr of children(xelem, ['rule'])) {
+      this.rules.push(...loadRule(xr, grid, this.newgrid, this.ip).symmetries(symmetry, d2));
+    }
+    this.n = -1;
+  }
+
+  go() {
+    if (this.n >= 0) return super.go();
+    const grid = this.grid, ng = this.newgrid;
+    ng.clear();
+    const { MX, MY, MZ } = grid, NMX = ng.MX, NMY = ng.MY, NMZ = ng.MZ;
+    const src = grid.state, dst = ng.state;
+    for (const rule of this.rules) {
+      const { IMX, IMY, IMZ, OMX, OMY, OMZ } = rule, inp = rule.input, out = rule.output;
+      for (let z = 0; z < MZ; z++) for (let y = 0; y < MY; y++) for (let x = 0; x < MX; x++) {
+        let ok = true;
+        for (let dz = 0, di = 0; dz < IMZ && ok; dz++) {
+          let sz = z + dz;
+          if (sz >= MZ) sz -= MZ;
+          for (let dy = 0; dy < IMY && ok; dy++) {
+            let sy = y + dy;
+            if (sy >= MY) sy -= MY;
+            for (let dx = 0; dx < IMX; dx++, di++) {
+              let sx = x + dx;
+              if (sx >= MX) sx -= MX;
+              if (!((inp[di] >> src[sx + sy * MX + sz * MX * MY]) & 1)) { ok = false; break; }
+            }
+          }
+        }
+        if (!ok) continue;
+        const X = Math.floor(x * this.NX / this.DX), Y = Math.floor(y * this.NY / this.DY), Z = Math.floor(z * this.NZ / this.DZ);
+        for (let dz = 0; dz < OMZ; dz++) for (let dy = 0; dy < OMY; dy++) for (let dx = 0; dx < OMX; dx++) {
+          const v = out[dx + dy * OMX + dz * OMX * OMY];
+          if (v === 0xff) continue;
+          let sx = X + dx, sy = Y + dy, sz = Z + dz;
+          if (sx >= NMX) sx -= NMX;
+          if (sy >= NMY) sy -= NMY;
+          if (sz >= NMZ) sz -= NMZ;
+          dst[sx + sy * NMX + sz * NMX * NMY] = v;
+        }
+      }
+    }
+    this.ip.grid = ng;
+    this.ip.active = this;
+    this.ip.activeBranch = null;
+    this.n++;
+    return true;
+  }
+
+  reset() {
+    super.reset();
+    this.n = -1;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Tile-based Wave Function Collapse (WaveFunctionCollapse.cs + TileModel.cs)
+
+const WDX = [1, 0, -1, 0, 0, 0];
+const WDY = [0, 1, 0, -1, 0, 0];
+const WDZ = [0, 0, 0, 0, 1, -1];
+const OPPOSITE = [2, 3, 0, 1, 5, 4];
+
+function randomIndex(weights, r) {
+  let sum = 0;
+  for (const w of weights) sum += w;
+  const threshold = r * sum;
+  let partial = 0;
+  for (let i = 0; i < weights.length; i++) {
+    partial += weights[i];
+    if (partial >= threshold) return i;
+  }
+  return 0;
+}
+
+class Wave {
+  constructor(length, P, D, shannon) {
+    this.length = length; this.P = P; this.D = D; this.shannon = shannon;
+    this.data = new Uint8Array(length * P).fill(1);
+    this.compatible = new Int32Array(length * P * D);
+    this.sumsOfOnes = new Int32Array(length);
+    if (shannon) {
+      this.sumsOfWeights = new Float64Array(length);
+      this.sumsOfWlw = new Float64Array(length);
+      this.entropies = new Float64Array(length);
+    }
+  }
+
+  init(propagator, sumW, sumWlw, startEntropy) {
+    const { P, D } = this;
+    const perTile = new Int32Array(P * D);
+    for (let p = 0; p < P; p++) for (let d = 0; d < D; d++) perTile[p * D + d] = propagator[OPPOSITE[d]][p].length;
+    this.data.fill(1);
+    for (let i = 0; i < this.length; i++) this.compatible.set(perTile, i * P * D);
+    this.sumsOfOnes.fill(P);
+    if (this.shannon) {
+      this.sumsOfWeights.fill(sumW);
+      this.sumsOfWlw.fill(sumWlw);
+      this.entropies.fill(startEntropy);
+    }
+  }
+
+  copyFrom(o) {
+    this.data.set(o.data);
+    this.compatible.set(o.compatible);
+    this.sumsOfOnes.set(o.sumsOfOnes);
+    if (this.shannon) {
+      this.sumsOfWeights.set(o.sumsOfWeights);
+      this.sumsOfWlw.set(o.sumsOfWlw);
+      this.entropies.set(o.entropies);
+    }
+  }
+}
+
+class WFCNode extends Branch {
+  wfcLoad(xelem, parentSymmetry) {
+    this.shannon = attrBool(xelem, 'shannon');
+    this.tries = attrInt(xelem, 'tries', 1000);
+    const L = this.grid.state.length, D = this.propagator.length;
+    this.wave = new Wave(L, this.P, D, this.shannon);
+    this.startwave = new Wave(L, this.P, D, this.shannon);
+    this.stack = [];
+    this.dirty = new Uint8Array(L);
+    this.sumW = this.sumWlw = this.startEntropy = 0;
+    if (this.shannon) {
+      this.wlw = this.weights.map((w) => w * Math.log(w));
+      this.sumW = this.weights.reduce((a, b) => a + b, 0);
+      this.sumWlw = this.wlw.reduce((a, b) => a + b, 0);
+      this.startEntropy = Math.log(this.sumW) - this.sumWlw / this.sumW;
+    }
+    super.load(xelem, parentSymmetry, this.newgrid);
+    this.n = -1;
+    this.firstgo = true;
+  }
+
+  reset() {
+    super.reset();
+    this.n = -1;
+    this.firstgo = true;
+  }
+
+  go() {
+    if (this.n >= 0) return super.go();
+    const ip = this.ip, grid = this.grid, wave = this.wave, P = this.P;
+    ip.active = this;
+    ip.activeBranch = null;
+    if (this.firstgo) {
+      wave.init(this.propagator, this.sumW, this.sumWlw, this.startEntropy);
+      this.stack = [];
+      for (let i = 0; i < wave.length; i++) {
+        const sw = this.map.get(grid.state[i]);
+        if (sw) for (let t = 0; t < P; t++) if (!sw[t]) this.ban(i, t);
+      }
+      if (!this.propagate()) {
+        ip.failed = true;
+        return false;
+      }
+      this.startwave.copyFrom(wave);
+      const goodseed = this.goodSeed();
+      if (goodseed === null) {
+        ip.failed = true;
+        return false;
+      }
+      this.random = new NetRandom(goodseed);
+      this.stack = [];
+      wave.copyFrom(this.startwave);
+      this.dirty.fill(1);
+      this.firstgo = false;
+      this.newgrid.clear();
+      ip.grid = this.newgrid;
+      return true;
+    }
+    const node = this.nextUnobservedNode(this.random);
+    if (node >= 0) {
+      this.observe(node, this.random);
+      this.propagate();
+    } else {
+      this.n++;
+    }
+    if (this.n >= 0) this.updateState(false);
+    else if (ip.gif) this.updateState(true);
+    return true;
+  }
+
+  goodSeed() {
+    const ip = this.ip;
+    for (let k = 0; k < this.tries; k++) {
+      const seed = ip.random.next();
+      this.random = new NetRandom(seed);
+      this.stack = [];
+      this.wave.copyFrom(this.startwave);
+      for (;;) {
+        const node = this.nextUnobservedNode(this.random);
+        if (node < 0) return seed;
+        this.observe(node, this.random);
+        if (!this.propagate()) break;
+      }
+    }
+    return null;
+  }
+
+  nextUnobservedNode(random) {
+    const { MX, MY, MZ } = this.grid, N = this.N, sums = this.wave.sumsOfOnes;
+    const ent = this.shannon ? this.wave.entropies : null;
+    let min = 1e4, argmin = -1;
+    for (let z = 0, i = 0; z < MZ; z++) for (let y = 0; y < MY; y++) for (let x = 0; x < MX; x++, i++) {
+      if (!this.periodic && (x + N > MX || y + N > MY || z + 1 > MZ)) continue;
+      const rv = sums[i];
+      if (rv > 1) {
+        const e = ent ? ent[i] : rv;
+        if (e <= min) {
+          const noise = 1e-6 * random.nextDouble();
+          if (e + noise < min) {
+            min = e + noise;
+            argmin = i;
+          }
+        }
+      }
+    }
+    return argmin;
+  }
+
+  observe(node, random) {
+    const P = this.P, data = this.wave.data, base = node * P;
+    const dist = new Array(P);
+    for (let t = 0; t < P; t++) dist[t] = data[base + t] ? this.weights[t] : 0;
+    const r = randomIndex(dist, random.nextDouble());
+    for (let t = 0; t < P; t++) if ((data[base + t] !== 0) !== (t === r)) this.ban(node, t);
+  }
+
+  propagate() {
+    const { MX, MY, MZ } = this.grid, MXY = MX * MY, N = this.N, P = this.P;
+    const stack = this.stack, propagator = this.propagator, compat = this.wave.compatible, D = propagator.length;
+    while (stack.length) {
+      const p1 = stack.pop(), i1 = stack.pop();
+      const x1 = i1 % MX, y1 = Math.floor((i1 % MXY) / MX), z1 = Math.floor(i1 / MXY);
+      for (let d = 0; d < D; d++) {
+        let x2 = x1 + WDX[d], y2 = y1 + WDY[d], z2 = z1 + WDZ[d];
+        if (!this.periodic && (x2 < 0 || y2 < 0 || z2 < 0 || x2 + N > MX || y2 + N > MY || z2 + 1 > MZ)) continue;
+        if (x2 < 0) x2 += MX; else if (x2 >= MX) x2 -= MX;
+        if (y2 < 0) y2 += MY; else if (y2 >= MY) y2 -= MY;
+        if (z2 < 0) z2 += MZ; else if (z2 >= MZ) z2 -= MZ;
+        const i2 = x2 + y2 * MX + z2 * MXY, base = i2 * P;
+        const p = propagator[d][p1];
+        for (let l = 0; l < p.length; l++) {
+          const t2 = p[l], ci = (base + t2) * D + d;
+          const c = --compat[ci];
+          if (c === 0) this.ban(i2, t2);
+        }
+      }
+    }
+    return this.wave.sumsOfOnes[0] > 0;
+  }
+
+  ban(i, t) {
+    const wave = this.wave, P = this.P, D = wave.D;
+    wave.data[i * P + t] = 0;
+    const ci = (i * P + t) * D;
+    wave.compatible.fill(0, ci, ci + D);
+    this.stack.push(i, t);
+    wave.sumsOfOnes[i]--;
+    this.dirty[i] = 1;
+    if (this.shannon) {
+      let s = wave.sumsOfWeights[i];
+      wave.entropies[i] += wave.sumsOfWlw[i] / s - Math.log(s);
+      wave.sumsOfWeights[i] -= this.weights[t];
+      wave.sumsOfWlw[i] -= this.wlw[t];
+      s = wave.sumsOfWeights[i];
+      if (s > 0) wave.entropies[i] -= wave.sumsOfWlw[i] / s - Math.log(s);
+    }
+  }
+}
+
+class TileNode extends WFCNode {
+  load(xelem, parentSymmetry, grid) {
+    const ip = this.ip;
+    this.N = 1;
+    this.periodic = attrBool(xelem, 'periodic');
+    const name = attr(xelem, 'tileset');
+    this.name = name;
+    const tilesname = attr(xelem, 'tiles', name);
+    this.overlap = attrInt(xelem, 'overlap', 0);
+    this.overlapz = attrInt(xelem, 'overlapz', 0);
+    const xroot = parseXML(ip.resource(`tilesets/${name}.xml`));
+    const fullSymmetry = attrBool(xroot, 'fullSymmetry');
+    const xtiles = children(children(xroot, ['tiles'])[0], ['tile']);
+    const first = ip.vox(`tilesets/${tilesname}/${attr(xtiles[0], 'name')}.vox`);
+    const S = first.MX, SZ = first.MZ;
+    if (S !== first.MY) throw new MJError(`tiles should be square shaped: ${S} != ${first.MY}`);
+    if (fullSymmetry && S !== SZ) throw new MJError(`tiles should be cubes for the full symmetry option: ${S} != ${SZ}`);
+    this.S = S;
+    this.SZ = SZ;
+    const ov = this.overlap, ovz = this.overlapz;
+    this.newgrid = new Grid(xelem, (S - ov) * grid.MX + ov, (S - ov) * grid.MY + ov, (SZ - ovz) * grid.MZ + ovz);
+
+    const newtile = (f) => {
+      const a = new Uint8Array(S * S * SZ);
+      for (let z = 0, k = 0; z < SZ; z++) for (let y = 0; y < S; y++) for (let x = 0; x < S; x++, k++) a[k] = f(x, y, z);
+      return a;
+    };
+    const zRotate = (p) => newtile((x, y, z) => p[y + (S - 1 - x) * S + z * S * S]);
+    const yRotate = (p) => newtile((x, y, z) => p[z + y * S + (S - 1 - x) * S * S]);
+    const xRotate = (p) => newtile((x, y, z) => p[x + z * S + (S - 1 - y) * S * S]);
+    const xReflect = (p) => newtile((x, y, z) => p[(S - 1 - x) + y * S + z * S * S]);
+    const yReflect = (p) => newtile((x, y, z) => p[x + (S - 1 - y) * S + z * S * S]);
+    const zReflect = (p) => newtile((x, y, z) => p[x + y * S + (S - 1 - z) * S * S]);
+    const key = (a) => a.join(',');
+    const same = (a, b) => key(a) === key(b);
+    const never = () => false;
+
+    const tiledata = [], positions = new Map(), named = new Map(), weights = [], uniques = [];
+    for (const xt of xtiles) {
+      const tilename = attr(xt, 'name');
+      const weight = attrFloat(xt, 'weight', 1.0);
+      const [flat, C] = ords(ip.vox(`tilesets/${tilesname}/${tilename}.vox`).data, uniques);
+      if (C > this.newgrid.C) throw new MJError(`there were more than ${this.newgrid.C} colors in vox files`);
+      const local = fullSymmetry ? cubeSymmetries(flat, zRotate, yRotate, xReflect, same)
+        : squareSymmetries(flat, zRotate, xReflect, same);
+      named.set(tilename, local);
+      const position = [];
+      for (const p of local) {
+        position.push(tiledata.length);
+        tiledata.push(p);
+        weights.push(weight);
+      }
+      positions.set(tilename, position);
+    }
+    const P = this.P = tiledata.length;
+    this.tiledata = tiledata;
+    this.weights = weights;
+
+    this.map = new Map();
+    for (const xr of children(xelem, ['rule'])) {
+      const position = new Array(P).fill(false);
+      for (const s of attr(xr, 'out').split('|')) {
+        if (!positions.has(s)) throw new MJError(`unknown tilename ${s}`);
+        for (const p of positions.get(s)) position[p] = true;
+      }
+      this.map.set(grid.values.get(attr(xr, 'in')), position);
+    }
+    if (!this.map.has(0)) this.map.set(0, new Array(P).fill(true));
+
+    const temp = Array.from({ length: 6 }, () => new Uint8Array(P * P));
+    const indexOf = new Map();
+    tiledata.forEach((t, i) => { if (!indexOf.has(key(t))) indexOf.set(key(t), i); });
+    const index = (p) => {
+      const k = indexOf.get(key(p));
+      if (k === undefined) throw new MJError(`tileset ${name}: a transformed tile is not among the tile variants`);
+      return k;
+    };
+    const last = (s) => s.split(' ').pop();
+    const tile = (s) => {
+      const code = s.split(' ');
+      const action = code.length === 2 ? code[0] : '';
+      let t = named.get(last(s))[0];
+      for (const sym of [...action].reverse()) {
+        if (sym === 'x') t = xRotate(t);
+        else if (sym === 'y') t = yRotate(t);
+        else if (sym === 'z') t = zRotate(t);
+        else throw new MJError(`unknown symmetry ${sym}`);
+      }
+      return t;
+    };
+    const set = (d, a, b) => { temp[d][index(a) * P + index(b)] = 1; };
+    const tilenames = xtiles.map((x) => attr(x, 'name'));
+    for (const xn of children(children(xroot, ['neighbors'])[0], ['neighbor'])) {
+      if (fullSymmetry) {
+        const left = attr(xn, 'left'), right = attr(xn, 'right');
+        if (!tilenames.includes(last(left)) || !tilenames.includes(last(right))) throw new MJError(`unknown tile ${last(left)} or ${last(right)}`);
+        const ltile = tile(left), rtile = tile(right);
+        const lsym = squareSymmetries(ltile, xRotate, yReflect, never), rsym = squareSymmetries(rtile, xRotate, yReflect, never);
+        for (let i = 0; i < lsym.length; i++) {
+          set(0, lsym[i], rsym[i]);
+          set(0, xReflect(rsym[i]), xReflect(lsym[i]));
+        }
+        const dtile = zRotate(ltile), utile = zRotate(rtile);
+        const dsym = squareSymmetries(dtile, yRotate, zReflect, never), usym = squareSymmetries(utile, yRotate, zReflect, never);
+        for (let i = 0; i < dsym.length; i++) {
+          set(1, dsym[i], usym[i]);
+          set(1, yReflect(usym[i]), yReflect(dsym[i]));
+        }
+        const btile = yRotate(ltile), ttile = yRotate(rtile);
+        const bsym = squareSymmetries(btile, zRotate, xReflect, never), tsym = squareSymmetries(ttile, zRotate, xReflect, never);
+        for (let i = 0; i < bsym.length; i++) {
+          set(4, bsym[i], tsym[i]);
+          set(4, zReflect(tsym[i]), zReflect(bsym[i]));
+        }
+      } else if (attr(xn, 'left') !== undefined) {
+        const left = attr(xn, 'left'), right = attr(xn, 'right');
+        if (!tilenames.includes(last(left)) || !tilenames.includes(last(right))) throw new MJError(`unknown tile ${last(left)} or ${last(right)}`);
+        const ltile = tile(left), rtile = tile(right);
+        set(0, ltile, rtile);
+        set(0, yReflect(ltile), yReflect(rtile));
+        set(0, xReflect(rtile), xReflect(ltile));
+        set(0, yReflect(xReflect(rtile)), yReflect(xReflect(ltile)));
+        const dtile = zRotate(ltile), utile = zRotate(rtile);
+        set(1, dtile, utile);
+        set(1, xReflect(dtile), xReflect(utile));
+        set(1, yReflect(utile), yReflect(dtile));
+        set(1, xReflect(yReflect(utile)), xReflect(yReflect(dtile)));
+      } else {
+        const top = attr(xn, 'top'), bottom = attr(xn, 'bottom');
+        if (!tilenames.includes(last(top)) || !tilenames.includes(last(bottom))) throw new MJError(`unknown tile ${last(top)} or ${last(bottom)}`);
+        const tsym = squareSymmetries(tile(top), zRotate, xReflect, never);
+        const bsym = squareSymmetries(tile(bottom), zRotate, xReflect, never);
+        for (let i = 0; i < tsym.length; i++) set(4, bsym[i], tsym[i]);
+      }
+    }
+    for (let p2 = 0; p2 < P; p2++) for (let p1 = 0; p1 < P; p1++) {
+      temp[2][p2 * P + p1] = temp[0][p1 * P + p2];
+      temp[3][p2 * P + p1] = temp[1][p1 * P + p2];
+      temp[5][p2 * P + p1] = temp[4][p1 * P + p2];
+    }
+    this.propagator = temp.map((td) => Array.from({ length: P }, (_, p1) => {
+      const list = [];
+      for (let p2 = 0; p2 < P; p2++) if (td[p1 * P + p2]) list.push(p2);
+      return Int32Array.from(list);
+    }));
+    this.wfcLoad(xelem, parentSymmetry);
+  }
+
+  // writes the tiles into the new grid; `decidedOnly` (live view) touches only the cells that are now settled
+  updateState(decidedOnly) {
+    const grid = this.grid, ng = this.newgrid, S = this.S, SZ = this.SZ, P = this.P;
+    const ov = this.overlap, ovz = this.overlapz, data = this.wave.data, C = ng.C;
+    const NMX = ng.MX, NMY = ng.MY, cells = S * S * SZ, dirty = this.dirty;
+    for (let z = 0, i = 0; z < grid.MZ; z++) for (let y = 0; y < grid.MY; y++) for (let x = 0; x < grid.MX; x++, i++) {
+      if (decidedOnly && (!dirty[i] || this.wave.sumsOfOnes[i] !== 1)) continue;
+      dirty[i] = 0;
+      const base = i * P;
+      const alive = [];
+      for (let t = 0; t < P; t++) if (data[base + t]) alive.push(t);
+      let winners;
+      if (alive.length === 1) {
+        winners = this.tiledata[alive[0]];
+      } else {
+        winners = new Uint8Array(cells);
+        const votes = new Int32Array(cells * C);
+        for (const t of alive) {
+          const tile = this.tiledata[t];
+          for (let di = 0; di < cells; di++) votes[di * C + tile[di]]++;
+        }
+        for (let di = 0; di < cells; di++) {
+          let best = -1, arg = 0xff;
+          for (let c = 0; c < C; c++) {
+            const vote = votes[di * C + c] + 0.1 * Math.random();
+            if (vote > best) { best = vote; arg = c; }
+          }
+          winners[di] = arg;
+        }
+      }
+      for (let dz = 0; dz < SZ; dz++) for (let dy = 0; dy < S; dy++) for (let dx = 0; dx < S; dx++) {
+        const sx = x * (S - ov) + dx, sy = y * (S - ov) + dy, sz = z * (SZ - ovz) + dz;
+        ng.state[sx + sy * NMX + sz * NMX * NMY] = winners[dx + dy * S + dz * S * S];
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
 // Interpreter
 
+const B64 = typeof atob === 'function' ? atob : (s) => Buffer.from(s, 'base64').toString('latin1');
+
 export class Interpreter {
-  constructor(xml, MX, MY, MZ) {
+  // opts.resources: { 'tilesets/X.xml': text, 'tilesets/X/T.vox' | 'rules/F/R.vox': {MX, MY, MZ, d: base64} }
+  // opts.gif: refresh the wfc output after every observation (for watching; the result is the same)
+  constructor(xml, MX, MY, MZ, opts = {}) {
     const xelem = typeof xml === 'string' ? parseXML(xml) : xml;
+    this.resources = opts.resources || {};
+    this.gif = !!opts.gif;
+    this.voxCache = new Map();
     this.origin = attrBool(xelem, 'origin');
     this.grid = new Grid(xelem, MX, MY, MZ);
+    this.startgrid = this.grid;
     const d2 = MZ === 1;
     const symmetry = getSymmetry(d2, attr(xelem, 'symmetry'), Array(d2 ? 8 : 48).fill(true));
     const top = nodeFactory(xelem, symmetry, this, this.grid);
@@ -832,11 +1360,31 @@ export class Interpreter {
     this.counter = 0;
     this.current = null;
     this.active = null;  // the rule node that made the last step
+    this.failed = false;
+  }
+
+  resource(path) {
+    if (!(path in this.resources)) throw new MJError(`missing resource ${path}`);
+    return this.resources[path];
+  }
+
+  vox(path) {
+    let v = this.voxCache.get(path);
+    if (!v) {
+      const r = this.resource(path), s = B64(r.d);
+      const data = new Uint8Array(s.length);
+      for (let i = 0; i < s.length; i++) data[i] = s.charCodeAt(i);
+      v = { MX: r.MX, MY: r.MY, MZ: r.MZ, data };
+      this.voxCache.set(path, v);
+    }
+    return v;
   }
 
   start(seed, steps = 50000) {
     this.random = new NetRandom(seed);
     this.steps = steps;
+    this.grid = this.startgrid;
+    this.failed = false;
     const g = this.grid;
     g.clear();
     if (this.origin) g.state[(g.MX >> 1) + (g.MY >> 1) * g.MX + (g.MZ >> 1) * g.MX * g.MY] = 1;
