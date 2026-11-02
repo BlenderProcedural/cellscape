@@ -18,11 +18,12 @@ the same grid as Cellscape in Blender. `demo/viewer.js` shows the grid with thre
 
 ## Embedding
 
-All pages work inside an iframe. Links to other pages open in a new tab, and every page posts its height to the
+All pages work inside an iframe; the documentation embeds the demo itself (section 3). Links to other pages open in a new tab, and every page posts its height to the
 parent window (`{type: "cellscape-height", height}`).
 
 ```html
 <iframe src="https://blenderprocedural.github.io/cellscape/" width="100%" height="9000" style="border:0" loading="lazy"></iframe>
+<iframe src="https://blenderprocedural.github.io/cellscape/docs.html" width="100%" height="10500" style="border:0" loading="lazy"></iframe>
 <iframe src="https://blenderprocedural.github.io/cellscape/demo.html" width="100%" height="680" style="border:0" allow="fullscreen"></iframe>
 ```
 
