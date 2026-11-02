@@ -1,7 +1,8 @@
 // MarkovJunior interpreter in JavaScript: one / all / prl / markov / sequence / path, map and tile-based WFC.
 // Port of Cellscape's Python port of MarkovJunior (https://github.com/mxgmn/MarkovJunior) by Maxim Gumin,
 // MIT License. It uses the same .NET random number generator, so a seed walks through the same choices as
-// the original and as Cellscape in Blender.
+// the original and as Cellscape in Blender. That generator is ported from .NET's System.Random
+// (https://github.com/dotnet/runtime, MIT License, Copyright (c) .NET Foundation and Contributors; see LICENSE).
 
 // ---------------------------------------------------------------------------------------------
 // .NET System.Random (Knuth subtractive generator)
